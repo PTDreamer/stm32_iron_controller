@@ -5265,14 +5265,14 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
 
    switch ( bt )
    {
-      case 0xF6: bt = 0x94; break; // ö
-      case 0xD6: bt = 0x99; break; // Ö
-      case 0xFC: bt = 0x81; break; // ü
-      case 0xDC: bt = 0x9A; break; // Ü
-      case 0xE4: bt = 0x84; break; // ä
-      case 0xC4: bt = 0x8E; break; // Ä
-      case 0xB5: bt = 0xE6; break; // µ
-      case 0xB0: bt = 0xF8; break; // °
+      case 0xF6: bt = 0x94; break; // ï¿½
+      case 0xD6: bt = 0x99; break; // ï¿½
+      case 0xFC: bt = 0x81; break; // ï¿½
+      case 0xDC: bt = 0x9A; break; // ï¿½
+      case 0xE4: bt = 0x84; break; // ï¿½
+      case 0xC4: bt = 0x8E; break; // ï¿½
+      case 0xB5: bt = 0xE6; break; // ï¿½
+      case 0xB0: bt = 0xF8; break; // ï¿½
    }
 
    if (bt < font->start_char || bt > font->end_char) return;
@@ -5804,42 +5804,27 @@ void UG_WaitForUpdate( void )
 
 void UG_DrawBMP( UG_S16 xp, UG_S16 yp, UG_BMP* bmp )
 {
+	   UG_U8 xx,yy,b;
    UG_S16 x,y,xs;
-   UG_U8 r,g,b;
-   UG_U16* p;
+   UG_U8* p;
    UG_U16 tmp;
    UG_COLOR c;
 
    if ( bmp->p == NULL ) return;
-
-   /* Only support 16 BPP so far */
-   if ( bmp->bpp == BMP_BPP_16 )
-   {
-      p = (UG_U16*)bmp->p;
-   }
-   else
-   {
-      return;
-   }
-
-   xs = xp;
+   p = (UG_U8*)bmp->p;
    for(y=0;y<bmp->height;y++)
    {
-      xp = xs;
       for(x=0;x<bmp->width;x++)
       {
-         tmp = *p++;
-         /* Convert RGB565 to RGB888 */
-         r = (tmp>>11)&0x1F;
-         r<<=3;
-         g = (tmp>>5)&0x3F;
-         g<<=2;
-         b = (tmp)&0x1F;
-         b<<=3;
-         c = ((UG_COLOR)r<<16) | ((UG_COLOR)g<<8) | (UG_COLOR)b;
-         UG_DrawPixel( xp++ , yp , c );
+         yy = y / 8 ;
+         xx = y % 8;
+         b = p[x + yy * bmp->width];
+         xx = 1 << xx;
+         xx = xx & b;
+         if(xx) c = C_WHITE;
+         else c = C_BLACK;
+    	 UG_DrawPixel( x + xp , y + yp , c );
       }
-      yp++;
    }
 }
 

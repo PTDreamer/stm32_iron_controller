@@ -37,8 +37,7 @@ void pset(UG_S16 x, UG_S16 y, UG_COLOR c)
 
 void update_display( void )
 {
-   unsigned int x,i,p;
-   x=0;
+   unsigned int i,p;
    for(p=0;p<8;p++)
    {
       write_cmd(0xB0|p);

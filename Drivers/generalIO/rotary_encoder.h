@@ -8,6 +8,8 @@
 #ifndef GENERALIO_ROTARY_ENCODER_H_
 #define GENERALIO_ROTARY_ENCODER_H_
 
+#define BIG_TRESHOLD 200
+
 #include "stm32f1xx_hal.h"
 
 typedef enum {

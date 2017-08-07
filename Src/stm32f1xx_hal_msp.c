@@ -111,8 +111,8 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
     hdma_adc1.Init.Mode = DMA_CIRCULAR;
     hdma_adc1.Init.Priority = DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&hdma_adc1) != HAL_OK)
@@ -245,6 +245,155 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
   /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
   /* USER CODE END SPI1_MspDeInit 1 */
+  }
+
+}
+
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
+{
+
+	if(htim_base->Instance==TIM3)
+	{
+		/* USER CODE BEGIN TIM3_MspInit 0 */
+
+		/* USER CODE END TIM3_MspInit 0 */
+		/* Peripheral clock enable */
+		__HAL_RCC_TIM3_CLK_ENABLE();
+		/* TIM3 interrupt Init */
+		HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
+		HAL_NVIC_EnableIRQ(TIM3_IRQn);
+		/* USER CODE BEGIN TIM3_MspInit 1 */
+
+		/* USER CODE END TIM3_MspInit 1 */
+	}
+	else   if(htim_base->Instance==TIM4)
+  {
+  /* USER CODE BEGIN TIM4_MspInit 0 */
+
+  /* USER CODE END TIM4_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM4_CLK_ENABLE();
+    /* TIM4 interrupt Init */
+    HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  /* USER CODE BEGIN TIM4_MspInit 1 */
+
+  /* USER CODE END TIM4_MspInit 1 */
+  }
+
+}
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+  if(htim->Instance==TIM4)
+  {
+  /* USER CODE BEGIN TIM4_MspPostInit 0 */
+
+  /* USER CODE END TIM4_MspPostInit 0 */
+
+    /**TIM4 GPIO Configuration
+    PB9     ------> TIM4_CH4
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN TIM4_MspPostInit 1 */
+
+  /* USER CODE END TIM4_MspPostInit 1 */
+  }
+
+}
+
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
+{
+	if(htim_base->Instance==TIM3)
+	{
+		/* USER CODE BEGIN TIM3_MspDeInit 0 */
+
+		/* USER CODE END TIM3_MspDeInit 0 */
+		/* Peripheral clock disable */
+		__HAL_RCC_TIM3_CLK_DISABLE();
+
+		/* TIM3 interrupt DeInit */
+		HAL_NVIC_DisableIRQ(TIM3_IRQn);
+		/* USER CODE BEGIN TIM3_MspDeInit 1 */
+
+		/* USER CODE END TIM3_MspDeInit 1 */
+	}
+	else   if(htim_base->Instance==TIM4)
+  {
+  /* USER CODE BEGIN TIM4_MspDeInit 0 */
+
+  /* USER CODE END TIM4_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_TIM4_CLK_DISABLE();
+
+    /* TIM4 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM4_IRQn);
+  /* USER CODE BEGIN TIM4_MspDeInit 1 */
+
+  /* USER CODE END TIM4_MspDeInit 1 */
+  }
+
+}
+
+void HAL_UART_MspInit(UART_HandleTypeDef* huart)
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+  if(huart->Instance==USART3)
+  {
+  /* USER CODE BEGIN USART3_MspInit 0 */
+
+  /* USER CODE END USART3_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_USART3_CLK_ENABLE();
+
+    /**USART3 GPIO Configuration
+    PB10     ------> USART3_TX
+    PB11     ------> USART3_RX
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN USART3_MspInit 1 */
+
+  /* USER CODE END USART3_MspInit 1 */
+  }
+
+}
+
+void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
+{
+
+  if(huart->Instance==USART3)
+  {
+  /* USER CODE BEGIN USART3_MspDeInit 0 */
+
+  /* USER CODE END USART3_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_USART3_CLK_DISABLE();
+
+    /**USART3 GPIO Configuration
+    PB10     ------> USART3_TX
+    PB11     ------> USART3_RX
+    */
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
+
+  /* USER CODE BEGIN USART3_MspDeInit 1 */
+
+  /* USER CODE END USART3_MspDeInit 1 */
   }
 
 }

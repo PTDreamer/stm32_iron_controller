@@ -9,7 +9,7 @@
 #include "rotary_encoder.h"
 
 /* Return with status macro */
-#define RETURN_WITH_STATUS(p, s) (p)->RE_Count = 0; (p)->Rotation = s; return s
+#define RETURN_WITH_STATUS(p, s) (p)->Rotation = s; return s
 
 void RE_Init(RE_State_t* data, GPIO_TypeDef* GPIO_A_Port, uint16_t GPIO_A_Pin, GPIO_TypeDef* GPIO_B_Port, uint16_t GPIO_B_Pin, GPIO_TypeDef* GPIO_BUTTON_Port, uint16_t GPIO_BUTTON_Pin) {
 	/* Save parameters */
@@ -34,25 +34,25 @@ void RE_Init(RE_State_t* data, GPIO_TypeDef* GPIO_A_Port, uint16_t GPIO_A_Pin, G
 RE_Rotation_t RE_Get(RE_State_t* data) {
 	/* Calculate everything */
 	data->Diff = data->RE_Count - data->Absolute;
-	data->Absolute += data->RE_Count;
+	data->Absolute += data->Diff;
 
 	/* Check */
 	if(data->pv_click == RE_BT_CLICKED) {
 		data->pv_click = RE_BT_HIDLE;
 		RETURN_WITH_STATUS(data, Click);
 	}
-	else if (data->RE_Count < 0) {
+	else if (data->Diff < 0) {
 		if(data->pv_click == RE_BT_DRAG) {
 			data->pv_click = RE_BT_HIDLE;
 			RETURN_WITH_STATUS(data, Rotate_Decrement_while_click);
 		}
-		RETURN_WITH_STATUS(data, Rotate_Decrement);
-	} else if (data->RE_Count > 0) {
+			RETURN_WITH_STATUS(data, Rotate_Decrement);
+	} else if (data->Diff > 0) {
 		if(data->pv_click == RE_BT_DRAG) {
 			data->pv_click = RE_BT_HIDLE;
 			RETURN_WITH_STATUS(data, Rotate_Increment_while_click);
 		}
-		RETURN_WITH_STATUS(data, Rotate_Increment);
+			RETURN_WITH_STATUS(data, Rotate_Increment);
 	}
 	RETURN_WITH_STATUS(data, Rotate_Nothing);
 }

@@ -41,7 +41,13 @@
 #include "ssd1306.h"
 #include "buzzer.h"
 #include "rotary_encoder.h"
+#include "adc_global.h"
 #include "tempsensors.h"
+#include "voltagesensors.h"
+#include "screen.h"
+#include "gui.h"
+
+//adc 32uS per sample
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -55,6 +61,14 @@ IWDG_HandleTypeDef hiwdg;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim4;
+
+TIM_HandleTypeDef htim3;
+
+UART_HandleTypeDef huart3;
+
+TIM_OC_InitTypeDef sConfigOC;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
@@ -64,10 +78,13 @@ SPI_HandleTypeDef hspi1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_ADC2_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_IWDG_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_USART3_UART_Init(void);
+static void MX_TIM3_Init(void);
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +95,8 @@ static void MX_IWDG_Init(void);
 
 /* USER CODE END 0 */
 RE_State_t RE1_Data;
+static uint32_t lastRotate;
+static uint8_t lastRotateNeedsUpdate;
 
 int main(void)
 {
@@ -105,16 +124,29 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_ADC2_Init();
-  MX_ADC1_Init();
-  if(HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK)
+  MX_ADC2_Init(&hadc2);
+  MX_ADC1_Init(&hadc1);
+  if(HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK)
+	  buzzer_alarm_start();
+  else if(HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK)
 	  buzzer_alarm_start();
   else
 	  buzzer_short_beep();
   MX_SPI1_Init();
   MX_IWDG_Init();
+  MX_TIM4_Init();
+  MX_USART3_UART_Init();
+  MX_TIM3_Init();
+  /* Enable ADC slave */
+  if (HAL_ADC_Start(&hadc2) != HAL_OK)
+  {
+    /* Start Error */
+    Error_Handler();
+  }
+  HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adc_measures, sizeof(adc_measures)/ sizeof(uint32_t));
+  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
+  //HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t)ADC1ConvertedValue, 2);
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -123,50 +155,33 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   UG_GUI gui;
   ssd1306_init(&hspi1);
-  UG_Init(&gui, pset, 176, 220);
-  UG_FontSelect(&FONT_10X16);
-  UG_SetBackcolor ( C_WHITE ) ;
-  UG_SetForecolor ( C_BLACK ) ;
-  UG_FontSetHSpace(0);
-  UG_FontSetVSpace(0);
-  UG_PutString( 0 , 0 , "1234");
- // UG_PutString( 0 , 14 , "Hello World!");
-
+  UG_Init(&gui, pset, 128, 64);
+  guiInit();
+  oled_init();
+  oled_draw();
   UG_Update();
   update_display();
 
-  UG_PutString( 0 , 20 , "4567");
-    UG_Update();
-    update_display();
   RE_Init(&RE1_Data, ROT_ENC_L_GPIO_Port, ROT_ENC_L_Pin, ROT_ENC_R_GPIO_Port, ROT_ENC_R_Pin, ROT_ENC_BUTTON_GPIO_Port, ROT_ENC_BUTTON_GPIO_Pin);
-  char str[10] = "1234";
+  uint32_t lastTimeDisplay = HAL_GetTick();
+  lastRotate = lastTimeDisplay;
+  lastRotateNeedsUpdate = 0;
   while (1)
   {
-	  handle_buzzer();
-	  RE_Rotation_t r = RE_Get(&RE1_Data);
-
-	  UG_PutString( 0 , 40 , "    ");
-
-//	  char *tmpSign = (adc_read < 0) ? "-" : "";
-//	  float tmpVal = (adc_read < 0) ? -adc_read : adc_read;
-//
-//	  int tmpInt1 = tmpVal;                  // Get the integer (678).
-//	  float tmpFrac = tmpVal - tmpInt1;      // Get fraction (0.0123).
-//	  int tmpInt2 = trunc(tmpFrac * 10000);  // Turn into integer (123).
-//
-//	  // Print as parts, note that you need 0-padding for fractional bit.
-//
-//	  sprintf (str, "%s%d.%04d\n", tmpSign, tmpInt1, tmpInt2);
-	  int adc_read = readColdJunctionSensorTemp_X10();
-	  sprintf(str,"%d", adc_read);
-	  UG_PutString( 0 , 40 , str);
-	 // adc_read = readColdJunctionSensorTemp_X102();
-	  adc_read = readTipTemperatureCompensated();
-	  sprintf(str,"%d", adc_read);
-	  UG_PutString( 60 , 40 , str);
-	  UG_Update();
-	  update_display();
-	  HAL_Delay(1000);
+	  if((lastRotateNeedsUpdate == 1) && (HAL_GetTick() - lastRotate > 1)) {
+		  RE_Process(&RE1_Data);
+		  lastRotateNeedsUpdate = 0;
+	  }
+	  if(HAL_GetTick() - lastTimeDisplay > 200) {
+		  handle_buzzer();
+		  RE_Rotation_t r = RE_Get(&RE1_Data);
+		  oled_update();
+		  oled_processInput(r, &RE1_Data);
+		  oled_draw();
+		  UG_Update();
+		  update_display();
+		  lastTimeDisplay = HAL_GetTick();
+	  }
 
   /* USER CODE END WHILE */
 
@@ -181,7 +196,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	/* Check RE pin 1 */
 	//if (GPIO_Pin == RE1_Data.GPIO_PIN_A) {
 		/* Process data */
-		RE_Process(&RE1_Data);
+	lastRotateNeedsUpdate = 1;
+	lastRotate = HAL_GetTick();
 	//}
 }
 
@@ -241,87 +257,7 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* ADC1 init function */
-static void MX_ADC1_Init(void)
-{
 
-  ADC_ChannelConfTypeDef sConfig;
-
-    /**Common config 
-    */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 2;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure Regular Channel 
-    */
-  sConfig.Channel = ADC_CHANNEL_1;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure Regular Channel 
-    */
-  sConfig.Channel = ADC_CHANNEL_3;
-  sConfig.Rank = 2;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
-/* ADC2 init function */
-static void MX_ADC2_Init(void)
-{
-
-  ADC_ChannelConfTypeDef sConfig;
-
-    /**Common config 
-    */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE;
-  hadc2.Init.ContinuousConvMode = ENABLE;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 2;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure Regular Channel 
-    */
-  sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure Regular Channel 
-    */
-  sConfig.Channel = ADC_CHANNEL_2;
-  sConfig.Rank = 2;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
 
 /* IWDG init function */
 static void MX_IWDG_Init(void)
@@ -354,6 +290,97 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 10;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/* TIM3 init function */
+static void MX_TIM3_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 60000;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 10;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/* TIM4 init function */
+static void MX_TIM4_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 1500;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 750;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/* USART3 init function */
+static void MX_USART3_UART_Init(void)
+{
+
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
@@ -404,9 +431,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ROT_ENC_L_Pin ROT_ENC_R_Pin */
-  GPIO_InitStruct.Pin = ROT_ENC_L_Pin|GPIO_PIN_5;
+  GPIO_InitStruct.Pin = ROT_ENC_L_Pin| ROT_ENC_R_Pin | GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : JUMPER_Pin PB3 PB4 WAKE_Pin */
@@ -421,8 +449,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BUZZER_Pin PWM_CONTROL_Pin */
-  GPIO_InitStruct.Pin = BUZZER_Pin|PWM_CONTROL_Pin;
+  /*Configure GPIO pins : BUZZER_Pin */
+  GPIO_InitStruct.Pin = BUZZER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);

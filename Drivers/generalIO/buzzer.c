@@ -34,6 +34,7 @@ void buzzer_alarm_stop() {
 	BUZZER_OFF;
 }
 void handle_buzzer() {
+	return;
 	uint32_t delta = HAL_GetTick() - last_time;
 	switch (buzzer_state) {
 	case STATE_SB:

@@ -6,7 +6,11 @@
  */
 
 #include "adc_global.h"
+#define ADC_SAMPLE_TIME ADC_SAMPLETIME_239CYCLES_5
 volatile adc_measures_t adc_measures[10];
+volatile iron_temp_measure_state_t iron_temp_measure_state = iron_temp_measure_idle;
+volatile uint16_t iron_temp_adc_avg = 0;
+
 /* ADC1 init function */
 void MX_ADC1_Init(ADC_HandleTypeDef *hadc1)
 {
@@ -40,7 +44,7 @@ void MX_ADC1_Init(ADC_HandleTypeDef *hadc1)
     */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLE_TIME;
   if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -80,7 +84,7 @@ void MX_ADC2_Init(ADC_HandleTypeDef * hadc2)
     */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLE_TIME;
   if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -90,7 +94,7 @@ void MX_ADC2_Init(ADC_HandleTypeDef * hadc2)
     */
   sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = 2;
-  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLE_TIME;
   if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);

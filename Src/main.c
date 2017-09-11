@@ -46,6 +46,8 @@
 #include "voltagesensors.h"
 #include "screen.h"
 #include "gui.h"
+#include "debug_screen.h"
+#include "pid.h"
 
 //adc 32uS per sample
 /* USER CODE BEGIN Includes */
@@ -68,6 +70,10 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart3;
 
 TIM_OC_InitTypeDef sConfigOC;
+
+
+volatile uint32_t adc = 0;
+volatile uint32_t dma = 0;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -97,7 +103,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 RE_State_t RE1_Data;
 static uint32_t lastRotate;
 static uint8_t lastRotateNeedsUpdate;
-
+static uint16_t tempSetPoint;
 int main(void)
 {
 
@@ -144,9 +150,9 @@ int main(void)
     Error_Handler();
   }
   HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adc_measures, sizeof(adc_measures)/ sizeof(uint32_t));
-  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
+  //__HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
   //HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-
+  HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -166,12 +172,90 @@ int main(void)
   uint32_t lastTimeDisplay = HAL_GetTick();
   lastRotate = lastTimeDisplay;
   lastRotateNeedsUpdate = 0;
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 5);
+
+  setPWM_tim(&htim4);
+  iron_temp_measure_state = iron_temp_measure_idle;
+
+  currentTipData = &calibratedTips[0];
+  currentTipData->m_200_300 = 0.1893939394;
+  currentTipData->b_200_300 = 48;
+  currentTipData->m_300_400 = 0.2173913043;
+  currentTipData->b_300_400 = -15.5304347826;
+  currentTipData->adc_at_300 = 1330;
+
+  char sdata[140];
+  sprintf (sdata, "%s\n", "begin");
+  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+  uint32_t startDelay = HAL_GetTick();
+  uint32_t logLoop = HAL_GetTick();
+  uint32_t loop10S = 0;
+  uint16_t produce_pwm = 0;
+
+  uint16_t pwm = 300;
+  uint16_t previousADC = 0;
+
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+  setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
   while (1)
   {
+	  if((HAL_GetTick() - startDelay > 5000) && (produce_pwm == 0) && iron_temp_adc_avg < 55) {
+		  pwm += 5;
+		  if(pwm > 400)
+			  pwm = 0;
+		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, pwm);
+		  produce_pwm = 1;
+		  loop10S = HAL_GetTick();
+		  previousADC = 0;
+		  sprintf (sdata, "starting with pwm=%d\n\r", pwm);
+		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+	  }
+	  if((HAL_GetTick() - logLoop > 500) && produce_pwm) {
+		  logLoop = HAL_GetTick();
+		  sprintf (sdata, "%d:%ld:%ld\n\r", pwm, readTipTemperatureCompensated(0), iron_temp_adc_avg);
+		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+	  }
+
+	  if(iron_temp_adc_avg > 2000) {
+		  produce_pwm = 0;
+		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+		  startDelay = HAL_GetTick();
+		  sprintf (sdata, "stop high temp\n\r");
+		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+	  }
+
+	  if((HAL_GetTick() - loop10S) > 10000 && produce_pwm) {
+		  if(previousADC == 0) {
+			  previousADC = iron_temp_adc_avg;
+		  }
+		  else if(fabs((int16_t)((int16_t)iron_temp_adc_avg - (int16_t)previousADC)) < 2) {
+			  produce_pwm = 0;
+			  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+			  startDelay = HAL_GetTick();
+	  		  sprintf (sdata, "stop stab\n\r");
+	  		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+		  }
+		  else
+			  previousADC = iron_temp_adc_avg;
+
+		  loop10S = HAL_GetTick();
+	  }
+
+	  if(iron_temp_measure_state == iron_temp_measure_ready) {
+		  readTipTemperatureCompensated(1);
+		  double set = calculatePID(tempSetPoint, iron_temp_adc_avg);
+		  set = set - 0.12038;
+		  set = set * 1500;
+		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, set);
+		  iron_temp_measure_state = iron_temp_measure_idle;
+	  }
 	  if((lastRotateNeedsUpdate == 1) && (HAL_GetTick() - lastRotate > 1)) {
 		  RE_Process(&RE1_Data);
 		  lastRotateNeedsUpdate = 0;
 	  }
+
 	  if(HAL_GetTick() - lastTimeDisplay > 200) {
 		  handle_buzzer();
 		  RE_Rotation_t r = RE_Get(&RE1_Data);
@@ -192,13 +276,49 @@ int main(void)
 
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if(htim != &htim3)
+		return;
+	if(iron_temp_measure_state == iron_temp_measure_idle) {
+		iron_temp_measure_state = iron_temp_measure_requested;
+	}
+}
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	if(hadc != &hadc1)
+		return;
+	if(iron_temp_measure_state == iron_temp_measure_requested) {
+		  HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+		  iron_temp_measure_state = iron_temp_measure_pwm_stopped;
+	}
+}
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	uint32_t acc = 0;
+	uint16_t max = 0;
+	uint16_t min = 0xFFFF;
+	uint16_t temp;
+	if(hadc != &hadc1)
+		return;
+	if(iron_temp_measure_state == iron_temp_measure_pwm_stopped) {
+		iron_temp_measure_state = iron_temp_measure_started;
+		return;
+	} else if(iron_temp_measure_state == iron_temp_measure_started) {
+		HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+		for(uint8_t x = 0; x < sizeof(adc_measures)/sizeof(adc_measures[0]); ++x) {
+			temp = adc_measures[x].iron;
+			acc += temp;
+			if(temp > max)
+				max = temp;
+			if(temp < min)
+				min = temp;
+		}
+		acc = acc - min - max;
+		iron_temp_adc_avg = acc / ((sizeof(adc_measures)/sizeof(adc_measures[0])) -2);
+		iron_temp_measure_state = iron_temp_measure_ready;
+	}
+}
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	/* Check RE pin 1 */
-	//if (GPIO_Pin == RE1_Data.GPIO_PIN_A) {
-		/* Process data */
 	lastRotateNeedsUpdate = 1;
 	lastRotate = HAL_GetTick();
-	//}
 }
 
 /** System Clock Configuration
@@ -304,9 +424,9 @@ static void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 60000;
+  htim3.Init.Prescaler = 6000;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 10;
+  htim3.Init.Period = 100;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
@@ -335,7 +455,7 @@ static void MX_TIM4_Init(void)
   TIM_ClockConfigTypeDef sClockSourceConfig;
 
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 0;
+  htim4.Init.Prescaler = 16;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 1500;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

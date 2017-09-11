@@ -7,12 +7,16 @@
 
 #include "gui.h"
 #include "main_screen.h"
+#include "debug_screen.h"
+#include "splash.h"
 
 void guiInit() {
 	screen_t *scr = oled_addScreen(screen_splash);
 	splash_setup(scr);
 	scr = oled_addScreen(screen_main);
 	main_screen_setup(scr);
+	scr = oled_addScreen(screen_debug);
+	debug_screen_setup(scr);
 }
 
 //

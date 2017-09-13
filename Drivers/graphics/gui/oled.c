@@ -22,6 +22,7 @@ screen_t *oled_addScreen(uint8_t index) {
 	ret->draw = NULL;
 	ret->processInput = NULL;
 	ret->widgets = NULL;
+	ret->current_widget = NULL;
 	if(screens == NULL) {
 		screens = ret;
 	}

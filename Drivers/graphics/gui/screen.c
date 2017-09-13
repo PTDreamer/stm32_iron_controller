@@ -38,7 +38,7 @@ widget_t * screen_tabToWidget(screen_t * scr, uint8_t tab) {
 		last_widget = scr->widgets;
 		while(last_widget) {
 			if(last_widget->type == widget_editable) {
-				if(last_widget->editable.tab == tab)
+				if(last_widget->editable.selectable.tab == tab)
 					return last_widget;
 			}
 			last_widget = last_widget->next_widget;
@@ -48,6 +48,7 @@ widget_t * screen_tabToWidget(screen_t * scr, uint8_t tab) {
 }
 
 int default_screenProcessInput(screen_t * scr, RE_Rotation_t input, RE_State_t *state) {
+	int ret = -1;
 	if(input == Rotate_Increment_while_click) {
 		uint8_t i = scr->index;
 		++i;
@@ -62,17 +63,12 @@ int default_screenProcessInput(screen_t * scr, RE_Rotation_t input, RE_State_t *
 			i = screen_LAST - 1;
 		return i;
 	}
-	editable_wiget_t *edit = extractEditablePartFromWidget(scr->current_widget);
-	if(edit) {
-		if(edit->processInput) {
-			if(edit->processInput(scr->current_widget, input, state))
-			{
-				return -1;
-			}
+	selectable_widget_t *sel = extractSelectablePartFromWidget(scr->current_widget);
+	if(sel) {
+		if(sel->processInput) {
+			ret = sel->processInput(scr->current_widget, input, state);
 		}
 	}
-	int ret = -1;
-
 	return ret;
 }
 
@@ -106,29 +102,30 @@ void default_screenUpdate(screen_t *scr) {
 
 
 void default_init(screen_t *scr) {
-	scr->current_widget = NULL;
+	if(scr->current_widget)
+		return;
 	if(!scr->widgets)
 		return;
 	int c = 1000;
 	widget_t *w = scr->widgets;
-	editable_wiget_t *edit;
+	selectable_widget_t *sel;
 	while(w) {
-		edit = extractEditablePartFromWidget(w);
-		if(edit) {
-			if(edit->tab < c) {
-				c = edit->tab;
+		sel = extractSelectablePartFromWidget(w);
+		if(sel) {
+			if(sel->tab < c) {
+				c = sel->tab;
 			}
 		}
 		w = w->next_widget;
 	}
 	w = scr->widgets;
 	while(w) {
-		edit = extractEditablePartFromWidget(w);
-		if(edit) {
-			if(edit->tab == c) {
+		sel = extractSelectablePartFromWidget(w);
+		if(sel) {
+			if(sel->tab == c) {
 				scr->current_widget = w;
-				if(edit->state == widget_idle)
-					edit->state = widget_selected;
+				if(sel->state == widget_idle)
+					sel->state = widget_selected;
 				return;
 			}
 		}

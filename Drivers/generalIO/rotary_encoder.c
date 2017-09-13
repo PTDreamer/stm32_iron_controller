@@ -43,13 +43,13 @@ RE_Rotation_t RE_Get(RE_State_t* data) {
 	}
 	else if (data->Diff < 0) {
 		if(data->pv_click == RE_BT_DRAG) {
-			data->pv_click = RE_BT_HIDLE;
+			//data->pv_click = RE_BT_HIDLE;
 			RETURN_WITH_STATUS(data, Rotate_Decrement_while_click);
 		}
 			RETURN_WITH_STATUS(data, Rotate_Decrement);
 	} else if (data->Diff > 0) {
 		if(data->pv_click == RE_BT_DRAG) {
-			data->pv_click = RE_BT_HIDLE;
+			//data->pv_click = RE_BT_HIDLE;
 			RETURN_WITH_STATUS(data, Rotate_Increment_while_click);
 		}
 			RETURN_WITH_STATUS(data, Rotate_Increment);
@@ -63,6 +63,10 @@ void RE_SetMode(RE_State_t* data, RE_Mode_t mode) {
 }
 
 void RE_Process(RE_State_t* data) {
+	uint32_t debounce = 0;
+	if((HAL_GetTick() - debounce) < 300)
+		return;
+	debounce = HAL_GetTick();
 	uint8_t now_a;
 	uint8_t now_b;
 	uint8_t now_button;
@@ -93,6 +97,8 @@ void RE_Process(RE_State_t* data) {
 			}
 		}
 	}
+	else if((data->pv_click == RE_BT_DRAG) && (now_button == 1))
+		data->pv_click = RE_BT_HIDLE;
 	else if(data->pv_click != RE_BT_DRAG) {
 		if((data->pv_click == RE_BT_HIDLE) && (now_button == 0)) {
 			data->pv_click = RE_BT_PRESSED;

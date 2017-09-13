@@ -17,6 +17,8 @@ void guiInit() {
 	main_screen_setup(scr);
 	scr = oled_addScreen(screen_debug);
 	debug_screen_setup(scr);
+	scr = oled_addScreen(screen_settings);
+	settings_screen_setup(scr);
 }
 
 //

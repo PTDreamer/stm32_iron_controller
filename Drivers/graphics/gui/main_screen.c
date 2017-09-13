@@ -135,10 +135,11 @@ void main_screen_setup(screen_t *scr) {
 	widget->editable.inputData.type = field_uinteger16;
 	widget->editable.big_step = 10;
 	widget->editable.step = 1;
-	widget->editable.tab = 0;
+	widget->editable.selectable.tab = 0;
 	widget->editable.setData = &testSet;
 	widget->reservedChars = 3;
-	widget->editable.state = widget_edit;
+	widget->editable.selectable.state = widget_edit;
+	scr->current_widget = widget;
 
 	// mode
 	widget = screen_addWidget(scr);
@@ -151,7 +152,7 @@ void main_screen_setup(screen_t *scr) {
 	widget->multiOptionWidget.editable.inputData.type = field_uinteger16;
 	widget->multiOptionWidget.editable.big_step = 0;
 	widget->multiOptionWidget.editable.step = 0;
-	widget->multiOptionWidget.editable.tab = 2;
+	widget->multiOptionWidget.editable.selectable.tab = 2;
 	widget->multiOptionWidget.editable.setData = &testSetM;
 
 	widget->reservedChars = 4;
@@ -172,7 +173,7 @@ void main_screen_setup(screen_t *scr) {
 	widget->multiOptionWidget.editable.inputData.type = field_uinteger16;
 	widget->multiOptionWidget.editable.big_step = 0;
 	widget->multiOptionWidget.editable.step = 0;
-	widget->multiOptionWidget.editable.tab = 1;
+	widget->multiOptionWidget.editable.selectable.tab = 1;
 	widget->multiOptionWidget.editable.setData = &testSetM;
 
 	widget->reservedChars = 4;

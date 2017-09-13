@@ -48,6 +48,7 @@
 #include "gui.h"
 #include "debug_screen.h"
 #include "pid.h"
+#include "settings.h"
 
 //adc 32uS per sample
 /* USER CODE BEGIN Includes */
@@ -104,6 +105,7 @@ RE_State_t RE1_Data;
 static uint32_t lastRotate;
 static uint8_t lastRotateNeedsUpdate;
 static uint16_t tempSetPoint;
+
 int main(void)
 {
 
@@ -188,61 +190,19 @@ int main(void)
   char sdata[140];
   sprintf (sdata, "%s\n", "begin");
   HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-  uint32_t startDelay = HAL_GetTick();
-  uint32_t logLoop = HAL_GetTick();
-  uint32_t loop10S = 0;
-  uint16_t produce_pwm = 0;
-
-  uint16_t pwm = 300;
-  uint16_t previousADC = 0;
 
   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-  setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
+  restoreSettings();
+  //currentPID.Kp = 0.00091328;
+  //currentPID.Kd = 0.00025182;
+  //currentPID.Ki = 0.000038516;
+  currentPID = systemSettings.PID;
+  //  currentPID.Kd = 0.00025182;
+   // currentPID.Ki = 0.000038516;
+  //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
   while (1)
   {
-	  if((HAL_GetTick() - startDelay > 5000) && (produce_pwm == 0) && iron_temp_adc_avg < 55) {
-		  pwm += 5;
-		  if(pwm > 400)
-			  pwm = 0;
-		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, pwm);
-		  produce_pwm = 1;
-		  loop10S = HAL_GetTick();
-		  previousADC = 0;
-		  sprintf (sdata, "starting with pwm=%d\n\r", pwm);
-		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-	  }
-	  if((HAL_GetTick() - logLoop > 500) && produce_pwm) {
-		  logLoop = HAL_GetTick();
-		  sprintf (sdata, "%d:%ld:%ld\n\r", pwm, readTipTemperatureCompensated(0), iron_temp_adc_avg);
-		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-	  }
-
-	  if(iron_temp_adc_avg > 2000) {
-		  produce_pwm = 0;
-		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-		  startDelay = HAL_GetTick();
-		  sprintf (sdata, "stop high temp\n\r");
-		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-	  }
-
-	  if((HAL_GetTick() - loop10S) > 10000 && produce_pwm) {
-		  if(previousADC == 0) {
-			  previousADC = iron_temp_adc_avg;
-		  }
-		  else if(fabs((int16_t)((int16_t)iron_temp_adc_avg - (int16_t)previousADC)) < 2) {
-			  produce_pwm = 0;
-			  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-			  startDelay = HAL_GetTick();
-	  		  sprintf (sdata, "stop stab\n\r");
-	  		  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-		  }
-		  else
-			  previousADC = iron_temp_adc_avg;
-
-		  loop10S = HAL_GetTick();
-	  }
-
 	  if(iron_temp_measure_state == iron_temp_measure_ready) {
 		  readTipTemperatureCompensated(1);
 		  double set = calculatePID(tempSetPoint, iron_temp_adc_avg);
@@ -262,8 +222,6 @@ int main(void)
 		  oled_update();
 		  oled_processInput(r, &RE1_Data);
 		  oled_draw();
-		  UG_Update();
-		  update_display();
 		  lastTimeDisplay = HAL_GetTick();
 	  }
 

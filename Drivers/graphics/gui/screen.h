@@ -20,7 +20,6 @@ struct screen_t
 	struct screen_t *next_screen;
 	widget_t *widgets;
 	widget_t *current_widget;
-	widgetStateType current_widget_state;
 	uint8_t enabled;
 	int (*processInput)(struct screen_t *scr, RE_Rotation_t input, RE_State_t *);
 	void (*update)(screen_t *scr);

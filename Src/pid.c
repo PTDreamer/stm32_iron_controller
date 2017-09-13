@@ -10,6 +10,9 @@
 static double max, min, Kp, Kd, Ki, pre_error, integral;
 uint32_t lastTime;
 
+void setupPIDFromStruct() {
+	setupPID(currentPID.max, currentPID.min, currentPID.Kp, currentPID.Kd, currentPID.Ki);
+}
 void setupPID(double _max, double _min, double _Kp, double _Kd, double _Ki ) {
 	max = _max;
 	min = _min;

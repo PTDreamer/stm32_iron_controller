@@ -194,10 +194,10 @@ void debug_screen_setup(screen_t *scr) {
 		widget->editable.inputData.type = field_uinteger16;
 		widget->editable.big_step = 10;
 		widget->editable.step = 1;
-		widget->editable.tab = 0;
+		widget->editable.selectable.tab = 0;
 		widget->editable.setData = &testwSet;
 		widget->reservedChars = 4;
-		widget->editable.state = widget_edit;
+		widget->editable.selectable.state = widget_edit;
 
 		widget = screen_addWidget(scr);
 		widgetDefaultsInit(widget, widget_editable);
@@ -209,7 +209,7 @@ void debug_screen_setup(screen_t *scr) {
 		widget->editable.inputData.type = field_uinteger16;
 		widget->editable.big_step = 10;
 		widget->editable.step = 1;
-		widget->editable.tab = 1;
+		widget->editable.selectable.tab = 1;
 		widget->editable.setData = &dSetPWM;
 		widget->reservedChars = 3;
 

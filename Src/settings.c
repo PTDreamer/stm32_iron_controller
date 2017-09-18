@@ -53,4 +53,19 @@ void resetSettings() {
 	systemSettings.PID.min = 0;
 	systemSettings.PID.max = 1;
 	systemSettings.version = SETTINGSVERSION;
+	systemSettings.contrast = 0x7F;
+	systemSettings.boost.temperature = 400;
+	systemSettings.boost.time = 60;
+	systemSettings.sleep.sleepTime = 60;
+	systemSettings.sleep.standbyTime = 5;
+	systemSettings.sleep.sleelpTemperature = 100;
+	systemSettings.currentTip = 0;
+	systemSettings.currentNumberOfTips = 1;
+	strcpy(systemSettings.ironTips[0].name, "DFLT");
+	systemSettings.ironTips[0].adc_at_300 = 1330;
+	systemSettings.ironTips[0].b_200_300 = 48;
+	systemSettings.ironTips[0].b_300_400 = -15.5304347826;
+	systemSettings.ironTips[0].m_200_300 = 0.1893939394;
+	systemSettings.ironTips[0].m_300_400 = 0.2173913043;
+
 }

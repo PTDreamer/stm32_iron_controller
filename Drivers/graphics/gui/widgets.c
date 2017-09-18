@@ -141,6 +141,7 @@ void default_widgetUpdate(widget_t *widget) {
 	data = dis->getData();
 	UG_FontSelect(widget->font_size);
 	uint16_t val_ui16;
+	char *str;
 	switch (widget->type) {
 	case widget_multi_option:
 		strcpy(widget->displayString, widget->multiOptionWidget.options[*(uint8_t*)data]);
@@ -154,6 +155,10 @@ void default_widgetUpdate(widget_t *widget) {
 				if(dis->number_of_dec) {
 					insertDot(widget->displayString, dis->number_of_dec);
 				}
+				break;
+			case field_string:
+				str = (char*)(data);
+				strcpy(widget->displayString, str);
 				break;
 			default:
 				break;
@@ -206,10 +211,24 @@ void default_widgetDraw(widget_t *widget) {
 	}
 	UG_FontSelect(widget->font_size);
 	char space[sizeof(widget->displayString)] = "           ";
-	space[widget->reservedChars] = (char)'\0';
-	UG_PutString(widget->posX ,widget->posY , space);
-	widget->displayString[widget->reservedChars] = (char)'\0';
-	UG_PutString(widget->posX ,widget->posY , widget->displayString);
+	if((widget->type != widget_label) && (extractDisplayPartFromWidget(widget)->type != field_string)) {
+		space[widget->reservedChars] = (char)'\0';
+		UG_PutString(widget->posX ,widget->posY , space);
+		widget->displayString[widget->reservedChars] = (char)'\0';
+		UG_PutString(widget->posX ,widget->posY , widget->displayString);
+	}
+	else if(extractDisplayPartFromWidget(widget)->type == field_string) {
+		UG_SetBackcolor ( C_BLACK ) ;
+		UG_SetForecolor ( C_WHITE ) ;
+		space[widget->reservedChars] = (char)'\0';
+		UG_PutString(widget->posX ,widget->posY , space);
+		widget->displayString[widget->reservedChars] = (char)'\0';
+		UG_PutString(widget->posX ,widget->posY , widget->displayString);
+		if(extractSelectablePartFromWidget(widget)->state == widget_edit)
+			UG_PutChar(widget->displayString[extractEditablePartFromWidget(widget)->current_edit], widget->posX + widget->font_size->char_width * extractEditablePartFromWidget(widget)->current_edit, widget->posY, C_BLACK, C_WHITE);
+	}
+	else
+		UG_PutString(widget->posX ,widget->posY , widget->displayString);
 	if(draw_frame) {
 		UG_DrawFrame(widget->posX - 1, widget->posY - 1,
 											widget->posX + widget->reservedChars * widget->font_size->char_width + 1,
@@ -227,7 +246,8 @@ void comboBoxDraw(widget_t *widget) {
 		if(!item->next_item)
 			break;
 		item = item->next_item;
-		++scroll;
+		if(item->enabled)
+			++scroll;
 	}
 	UG_FontSelect(widget->font_size);
 	for(uint8_t x = 0; x < yDim / height; ++x) {
@@ -236,9 +256,11 @@ void comboBoxDraw(widget_t *widget) {
 			UG_DrawFrame(0, x * height + widget->posY -1, UG_GetXDim() -1, x * height + widget->posY + widget->font_size->char_height, C_WHITE);
 		}
 		UG_PutString(UG_GetXDim() / 2 - (strlen(item->text) / 2 * widget->font_size->char_width) ,x * height + widget->posY, item->text);
-		if(!item->next_item)
+		do {
+			item = item->next_item;
+		}while(item && !item->enabled);
+		if(!item)
 			break;
-		item = item->next_item;
 	}
 	return;
 }
@@ -246,9 +268,10 @@ void comboBoxDraw(widget_t *widget) {
 uint8_t comboItemToIndex(widget_t *combo, comboBox_item_t *item) {
 	uint8_t index = 0;
 	comboBox_item_t *i = combo->comboBoxWidget.items;
-	while(i != item) {
+	while(i && i != item) {
 		i = i->next_item;
-		++ index;
+		if(i->enabled)
+			++ index;
 	}
 	return index;
 }
@@ -263,6 +286,9 @@ int comboBoxProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t *stat
 		return widget->comboBoxWidget.currentItem->action_screen;
 	else if(input == Rotate_Increment) {
 		comboBox_item_t *current = widget->comboBoxWidget.currentItem->next_item;
+		while(current && !current->enabled) {
+			current = current->next_item;
+		}
 		if(current) {
 			widget->comboBoxWidget.currentItem = current;
 			uint8_t index = comboItemToIndex(widget, current);
@@ -273,11 +299,14 @@ int comboBoxProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t *stat
 	else if(input == Rotate_Decrement) {
 		if(widget->comboBoxWidget.currentItem == widget->comboBoxWidget.items)
 			return -1;
-		comboBox_item_t *current = widget->comboBoxWidget.items;
-		while(current->next_item != widget->comboBoxWidget.currentItem) {
-			current = current->next_item;
-		}
-		widget->comboBoxWidget.currentItem = current;
+		comboBox_item_t *current = NULL;
+		do {
+			current = widget->comboBoxWidget.items;
+			while(current->next_item != widget->comboBoxWidget.currentItem) {
+				current = current->next_item;
+			}
+			widget->comboBoxWidget.currentItem = current;
+		}while(!current->enabled);
 		uint8_t index = comboItemToIndex(widget, current);
 		if(index < firstIndex)
 			--widget->comboBoxWidget.currentScroll;
@@ -295,12 +324,24 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 				case widget_selected:
 					if(widget->type == widget_button)
 						return widget->buttonWidget.action(widget);
+					if(extractDisplayPartFromWidget(widget)->type == field_string)
+						extractEditablePartFromWidget(widget)->current_edit = 0;
 					sel->state = widget_edit;
 					sel->previous_state = widget_selected;
 					break;
 				case widget_edit:
-					sel->state = widget_selected;
-					sel->previous_state = widget_edit;
+					if(extractDisplayPartFromWidget(widget)->type == field_string) {
+						++extractEditablePartFromWidget(widget)->current_edit;
+						if(extractEditablePartFromWidget(widget)->current_edit == widget->reservedChars)
+						{
+							sel->state = widget_selected;
+							sel->previous_state = widget_edit;
+						}
+					}
+					else {
+						sel->state = widget_selected;
+						sel->previous_state = widget_edit;
+					}
 					break;
 				default:
 					break;
@@ -309,6 +350,7 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 		}
 		if((widget->type == widget_editable) && (extractSelectablePartFromWidget(widget)->state == widget_edit)) {
 			uint16_t ui16;
+			char *str;
 			int8_t inc;
 			if(fabs(state->Diff) > 2) {
 				inc = widget->editable.big_step;
@@ -326,6 +368,12 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 				else if(ui16 < widget->editable.min_value)
 					ui16 = widget->editable.min_value;
 				widget->editable.setData(&ui16);
+				break;
+			case field_string:
+				str = (char*)widget->editable.inputData.getData();
+				strcpy(widget->displayString, str);
+				widget->displayString[extractEditablePartFromWidget(widget)->current_edit] += inc;
+				widget->editable.setData(widget->displayString);
 				break;
 			default:
 				break;
@@ -395,23 +443,24 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 	return -2;
 }
 
-uint8_t comboAddItem(widget_t *combo, char *label, uint8_t actionScreen) {
+comboBox_item_t *comboAddItem(widget_t *combo, char *label, uint8_t actionScreen) {
 	comboBox_item_t *item = malloc(sizeof(comboBox_item_t));
 	if(!item)
-		return 0;
+		return NULL;
 	item->text = label;
 	item->next_item = NULL;
 	item->action_screen = actionScreen;
+	item->enabled = 1;
 
 	comboBox_item_t *last = combo->comboBoxWidget.items;
 	if(!last) {
 		combo->comboBoxWidget.items = item;
 		combo->comboBoxWidget.currentItem = item;
-		return 1;
+		return item;
 	}
 	while(last->next_item){
 		last = last->next_item;
 	}
 	last->next_item = item;
-	return 1;
+	return item;
 }

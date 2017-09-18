@@ -180,12 +180,7 @@ int main(void)
   setPWM_tim(&htim4);
   iron_temp_measure_state = iron_temp_measure_idle;
 
-  currentTipData = &calibratedTips[0];
-  currentTipData->m_200_300 = 0.1893939394;
-  currentTipData->b_200_300 = 48;
-  currentTipData->m_300_400 = 0.2173913043;
-  currentTipData->b_300_400 = -15.5304347826;
-  currentTipData->adc_at_300 = 1330;
+
 
   char sdata[140];
   sprintf (sdata, "%s\n", "begin");
@@ -198,6 +193,13 @@ int main(void)
   //currentPID.Kd = 0.00025182;
   //currentPID.Ki = 0.000038516;
   currentPID = systemSettings.PID;
+  setContrast(systemSettings.contrast);
+  currentBoostSettings = systemSettings.boost;
+  currentSleepSettings = systemSettings.sleep;
+  applyBoostSettings();
+  applySleepSettings();
+  setupPIDFromStruct();
+  currentTipData = &systemSettings.ironTips[systemSettings.currentTip];
   //  currentPID.Kd = 0.00025182;
    // currentPID.Ki = 0.000038516;
   //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);

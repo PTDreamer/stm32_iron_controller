@@ -1,6 +1,8 @@
 #include "ssd1306.h"
 static unsigned char buffer[128*8]; // 128x64 1BPP OLED
 static SPI_HandleTypeDef * m_hspi;
+static uint8_t m_contrast = 0xCF;
+
 void write_data(uint8_t *data) {
 	HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin,GPIO_PIN_SET);//CS
 	HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin,GPIO_PIN_SET);//DC
@@ -47,6 +49,14 @@ void update_display( void )
    }
 }
 
+void setContrast(uint8_t value) {
+	write_cmd(0x81);         // Set Contrast Control
+	write_cmd(value);         //   Default => 0x7F
+	m_contrast = value;
+}
+uint8_t getContrast() {
+	return m_contrast;
+}
 void ssd1306_init(SPI_HandleTypeDef *hspi)
 {
 	m_hspi = hspi;

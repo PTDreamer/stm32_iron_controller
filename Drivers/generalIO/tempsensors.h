@@ -23,6 +23,7 @@ typedef struct tipData {
 	float m_300_400;
 	float b_300_400;
 	uint16_t adc_at_300;
+	char name[5];
 } tipData;
 
 tipData *currentTipData;

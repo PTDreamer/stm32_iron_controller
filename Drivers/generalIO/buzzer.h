@@ -19,4 +19,5 @@ void buzzer_long_beep();
 void buzzer_alarm_start();
 void buzzer_alarm_stop();
 void handle_buzzer();
+void buzzer_init();
 #endif /* GENERALIO_BUZZER_H_ */

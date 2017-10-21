@@ -8,6 +8,9 @@
 #include "tempsensors.h"
 #include "math.h"
 
+const uint16_t temp_minC = 180;                 // Minimum calibration temperature in degrees of Celsius
+const uint16_t temp_maxC = 450;                 // Maximum calibration temperature in degrees of Celsius
+
 #define T0	310.189760024283
 #define V0	12.6313864176219
 #define P1	24.0619489545393
@@ -21,6 +24,7 @@
 
 
 static const uint16_t NTC_R = 1013;
+static tipData *currentTipData;
 
 uint16_t readColdJunctionSensorTemp_mC(void) {
 	static uint32_t rollingAverage[4];
@@ -60,24 +64,66 @@ uint16_t readTipTemperatureCompensated(uint8_t new){
 	static uint16_t last_value;
 	if(!new)
 		return last_value;
-	if(iron_temp_adc_avg < currentTipData->adc_at_300) {
-		last_value = iron_temp_adc_avg * currentTipData->m_200_300 + currentTipData->b_200_300;
-	}
-	else {
-		last_value = iron_temp_adc_avg * currentTipData->m_300_400 + currentTipData->b_300_400;
-	}
-	last_value = last_value + readColdJunctionSensorTemp_mC() / 1000;
+	last_value = adc2Human(iron_temp_adc_avg);
 	return last_value;
 }
 
-uint16_t realTempToADC(uint16_t real) {
-	uint16_t comp_mC = real - readColdJunctionSensorTemp_mC() / 1000;
-	uint16_t ret;
-	if(real < 300) {
-		ret = (comp_mC - currentTipData->b_200_300) / currentTipData->m_200_300;
-	}
-	else {
-		ret = (comp_mC - currentTipData->b_300_400) / currentTipData->m_300_400;
-	}
-	return ret;
+void setCurrentTip(uint8_t tip) {
+	currentTipData = &systemSettings.ironTips[tip];
+}
+
+tipData * getCurrentTip() {
+	return currentTipData;
+}
+
+uint16_t human2adc(uint16_t t) {     // Translate the human readable temperature into internal value
+  uint16_t temp = t;
+  uint16_t ambientTemperature = readColdJunctionSensorTemp_mC() / 1000;
+  t = t - ambientTemperature;
+  if (t < temp_minC) t = temp_minC;
+  if (t > temp_maxC) t = temp_maxC;
+  if (t >= currentTipData->calADC_At_300)
+    temp = map(t, 300, 400, currentTipData->calADC_At_300, currentTipData->calADC_At_400);
+  else
+    temp = map(t , 200, 300, currentTipData->calADC_At_200, currentTipData->calADC_At_300);
+
+  uint16_t tH = adc2Human(temp)- ambientTemperature;
+  if(tH == t)
+	  return temp;
+  if(tH < t) {
+	  for(uint16_t x = 0; x < 1000; ++x) {
+		  ++temp;
+		  tH = adc2Human(temp)- ambientTemperature;
+		  if(tH >= t)
+			  return temp;
+	  }
+  }
+  if(tH > t) {
+	  for(uint16_t x = 0; x < 1000; ++x) {
+		  --temp;
+		  tH = adc2Human(temp)- ambientTemperature;
+		  if(tH <= t)
+			  return temp;
+	  }
+  }
+  return temp;
+}
+
+// Thanslate temperature from internal units to the human readable value (Celsius or Farenheit)
+uint16_t adc2Human(uint16_t adc_value) {
+  uint16_t tempH = 0;
+  uint16_t ambientTemperature = readColdJunctionSensorTemp_mC() / 1000;
+  if (adc_value < currentTipData->calADC_At_200) {
+    tempH = map(adc_value, 0, currentTipData->calADC_At_200, ambientTemperature, 200);
+  } else if (adc_value >= currentTipData->calADC_At_300) {
+    tempH = map(adc_value, currentTipData->calADC_At_300, currentTipData->calADC_At_400, 300, 400);
+  } else {
+    tempH = map(adc_value, currentTipData->calADC_At_200, currentTipData->calADC_At_300, 200, 300);
+  }
+  return tempH + ambientTemperature;
+}
+
+long map(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }

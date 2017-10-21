@@ -174,44 +174,44 @@ void debug_screen_setup(screen_t *scr) {
 	widget->reservedChars = 5;
 
 	widget = screen_addWidget(scr);
-		widgetDefaultsInit(widget, widget_display);
-		widget->posX = 100;
-		widget->posY = 16;
-		widget->font_size = &FONT_6X8;
-		widget->displayWidget.getData = &debug_screen_getAmbTemp;
-		widget->displayWidget.number_of_dec = 1;
-		widget->displayWidget.type = field_uinteger16;
-		widget->reservedChars = 4;
-		// tip temperature setpoint
+	widgetDefaultsInit(widget, widget_display);
+	widget->posX = 100;
+	widget->posY = 16;
+	widget->font_size = &FONT_6X8;
+	widget->displayWidget.getData = &debug_screen_getAmbTemp;
+	widget->displayWidget.number_of_dec = 1;
+	widget->displayWidget.type = field_uinteger16;
+	widget->reservedChars = 4;
+	// tip temperature setpoint
 
-		widget = screen_addWidget(scr);
-		widgetDefaultsInit(widget, widget_editable);
-		widget->posX = 100;
-		widget->posY = 27;
-		widget->font_size = &FONT_6X8;
-		widget->editable.inputData.getData = &testwGet;
-		widget->editable.inputData.number_of_dec = 0;
-		widget->editable.inputData.type = field_uinteger16;
-		widget->editable.big_step = 10;
-		widget->editable.step = 1;
-		widget->editable.selectable.tab = 0;
-		widget->editable.setData = &testwSet;
-		widget->reservedChars = 4;
-		widget->editable.selectable.state = widget_edit;
+	widget = screen_addWidget(scr);
+	widgetDefaultsInit(widget, widget_editable);
+	widget->posX = 100;
+	widget->posY = 27;
+	widget->font_size = &FONT_6X8;
+	widget->editable.inputData.getData = &testwGet;
+	widget->editable.inputData.number_of_dec = 0;
+	widget->editable.inputData.type = field_uinteger16;
+	widget->editable.big_step = 10;
+	widget->editable.step = 1;
+	widget->editable.selectable.tab = 0;
+	widget->editable.setData = (void (*)(void *))&testwSet;
+	widget->reservedChars = 4;
+	widget->editable.selectable.state = widget_edit;
 
-		widget = screen_addWidget(scr);
-		widgetDefaultsInit(widget, widget_editable);
-		widget->posX = 100;
-		widget->posY = 38;
-		widget->font_size = &FONT_6X8;
-		widget->editable.inputData.getData = &dGetPWM;
-		widget->editable.inputData.number_of_dec = 0;
-		widget->editable.inputData.type = field_uinteger16;
-		widget->editable.big_step = 10;
-		widget->editable.step = 1;
-		widget->editable.selectable.tab = 1;
-		widget->editable.setData = &dSetPWM;
-		widget->reservedChars = 3;
+	widget = screen_addWidget(scr);
+	widgetDefaultsInit(widget, widget_editable);
+	widget->posX = 100;
+	widget->posY = 38;
+	widget->font_size = &FONT_6X8;
+	widget->editable.inputData.getData = &dGetPWM;
+	widget->editable.inputData.number_of_dec = 0;
+	widget->editable.inputData.type = field_uinteger16;
+	widget->editable.big_step = 10;
+	widget->editable.step = 1;
+	widget->editable.selectable.tab = 1;
+	widget->editable.setData = (void (*)(void *))&dSetPWM;
+	widget->reservedChars = 3;
 
 
 }

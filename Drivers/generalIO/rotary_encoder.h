@@ -18,6 +18,7 @@ typedef enum {
 	Rotate_Increment_while_click, /*!< Encoder was incremented */
 	Rotate_Decrement_while_click, /*!< Encoder was decremented */
 	Click,
+	LongClick,
 	Rotate_Nothing,    /*!< Encoder stop at it was before */
 } RE_Rotation_t;
 
@@ -32,6 +33,7 @@ typedef enum {
 typedef enum {
 	RE_BT_PRESSED,
 	RE_BT_CLICKED,
+	RE_BT_LONG_CLICK,
 	RE_BT_DRAG,
 	RE_BT_HIDLE
 } RE_Click_t;

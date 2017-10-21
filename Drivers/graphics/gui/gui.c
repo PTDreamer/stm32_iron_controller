@@ -9,6 +9,8 @@
 #include "main_screen.h"
 #include "debug_screen.h"
 #include "splash.h"
+#include "settings_screen.h"
+#include "calibration_screen.h"
 
 void guiInit() {
 	screen_t *scr = oled_addScreen(screen_splash);
@@ -19,6 +21,8 @@ void guiInit() {
 	debug_screen_setup(scr);
 	scr = oled_addScreen(screen_settings);
 	settings_screen_setup(scr);
+	scr = oled_addScreen(screen_edit_calibration_wait);
+	calibration_screen_setup(scr);
 }
 
 //

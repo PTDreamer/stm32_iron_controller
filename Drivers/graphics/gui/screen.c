@@ -52,7 +52,7 @@ int default_screenProcessInput(screen_t * scr, RE_Rotation_t input, RE_State_t *
 	if(input == Rotate_Increment_while_click) {
 		uint8_t i = scr->index;
 		++i;
-		if(i == screen_LAST)
+		if(i == screen_last_scrollable)
 			i = 1;
 		return i;
 	}
@@ -60,7 +60,7 @@ int default_screenProcessInput(screen_t * scr, RE_Rotation_t input, RE_State_t *
 		uint8_t i = scr->index;
 		--i;
 		if(i == 0)
-			i = screen_LAST - 1;
+			i = screen_last_scrollable - 1;
 		return i;
 	}
 	selectable_widget_t *sel = extractSelectablePartFromWidget(scr->current_widget);

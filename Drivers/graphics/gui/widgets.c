@@ -69,6 +69,7 @@ void widgetDefaultsInit(widget_t *w, widgetType t) {
 		sel->state = widget_idle;
 		sel->tab = 0;
 		sel->processInput = &default_widgetProcessInput;
+		sel->longPressAction = NULL;
 	}
 	switch (t) {
 		case widget_bmp:
@@ -319,6 +320,12 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 		return -1;
 	selectable_widget_t *sel = extractSelectablePartFromWidget(widget);
 	if(sel) {
+		if(input == LongClick) {
+			if(sel->longPressAction)
+				return sel->longPressAction(widget);
+			else
+				input = Click;
+		}
 		if(input == Click) {
 			switch (sel->state) {
 				case widget_selected:
@@ -403,17 +410,17 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 			while(w) {
 				selectable_widget_t *e = extractSelectablePartFromWidget(w);
 				if(e) {
-					if((e->tab > sel->tab) && (e->tab < next)) {
+					if((e->tab > sel->tab) && (e->tab < next) && w->enabled) {
 						next = e->tab;
 						next_w = w;
 					}
-					if((e->tab < sel->tab) && (e->tab > previous)) {
+					if((e->tab < sel->tab) && (e->tab > previous) && w->enabled) {
 						previous = e->tab;
 						previous_w = w;
 					}
-					if(e->tab < extractSelectablePartFromWidget(first_w)->tab)
+					if((e->tab < extractSelectablePartFromWidget(first_w)->tab) && w->enabled)
 						first_w = w;
-					if(e->tab > extractSelectablePartFromWidget(last_w)->tab)
+					if((e->tab > extractSelectablePartFromWidget(last_w)->tab) && w->enabled)
 						last_w = w;
 				}
 				w = w->next_widget;

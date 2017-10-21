@@ -49,7 +49,8 @@
 #include "debug_screen.h"
 #include "pid.h"
 #include "settings.h"
-
+#include "iron.h"
+//-u _printf_float
 //adc 32uS per sample
 /* USER CODE BEGIN Includes */
 
@@ -104,8 +105,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 RE_State_t RE1_Data;
 static uint32_t lastRotate;
 static uint8_t lastRotateNeedsUpdate;
-static uint16_t tempSetPoint;
-
+static uint16_t ironTempADCRollingAveraget[10];
+static uint8_t rollingAvgTail = 0;
 int main(void)
 {
 
@@ -181,13 +182,12 @@ int main(void)
   iron_temp_measure_state = iron_temp_measure_idle;
 
 
-
   char sdata[140];
   sprintf (sdata, "%s\n", "begin");
   HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
 
-  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+//  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+//  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   restoreSettings();
   //currentPID.Kp = 0.00091328;
   //currentPID.Kd = 0.00025182;
@@ -199,7 +199,10 @@ int main(void)
   applyBoostSettings();
   applySleepSettings();
   setupPIDFromStruct();
-  currentTipData = &systemSettings.ironTips[systemSettings.currentTip];
+  setCurrentTip(systemSettings.currentTip);
+  ironInit(&htim4);
+  buzzer_init();
+
   //  currentPID.Kd = 0.00025182;
    // currentPID.Ki = 0.000038516;
   //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
@@ -207,10 +210,10 @@ int main(void)
   {
 	  if(iron_temp_measure_state == iron_temp_measure_ready) {
 		  readTipTemperatureCompensated(1);
-		  double set = calculatePID(tempSetPoint, iron_temp_adc_avg);
-		  set = set - 0.12038;
-		  set = set * 1500;
-		  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, set);
+		  handleIron(0);
+		  //char sdata[140];
+		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
+		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
 		  iron_temp_measure_state = iron_temp_measure_idle;
 	  }
 	  if((lastRotateNeedsUpdate == 1) && (HAL_GetTick() - lastRotate > 1)) {
@@ -219,6 +222,10 @@ int main(void)
 	  }
 
 	  if(HAL_GetTick() - lastTimeDisplay > 200) {
+		 // char sdata[140];
+		  		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
+		  		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
+
 		  handle_buzzer();
 		  RE_Rotation_t r = RE_Get(&RE1_Data);
 		  oled_update();
@@ -247,8 +254,8 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	if(hadc != &hadc1)
 		return;
 	if(iron_temp_measure_state == iron_temp_measure_requested) {
-		  HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
-		  iron_temp_measure_state = iron_temp_measure_pwm_stopped;
+		HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+		iron_temp_measure_state = iron_temp_measure_pwm_stopped;
 	}
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
@@ -262,7 +269,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		iron_temp_measure_state = iron_temp_measure_started;
 		return;
 	} else if(iron_temp_measure_state == iron_temp_measure_started) {
-		HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 		for(uint8_t x = 0; x < sizeof(adc_measures)/sizeof(adc_measures[0]); ++x) {
 			temp = adc_measures[x].iron;
 			acc += temp;
@@ -272,8 +278,20 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 				min = temp;
 		}
 		acc = acc - min - max;
-		iron_temp_adc_avg = acc / ((sizeof(adc_measures)/sizeof(adc_measures[0])) -2);
+		uint16_t last = acc / ((sizeof(adc_measures)/sizeof(adc_measures[0])) -2);
+		ironTempADCRollingAveraget[rollingAvgTail] = last;
+		++rollingAvgTail;
+		if(rollingAvgTail > (sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]))-1) {
+			rollingAvgTail = 0;
+		}
+		acc = 0;
+		for(uint8_t x = 0; x < sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]); ++x) {
+			acc += ironTempADCRollingAveraget[x];
+		}
+		iron_temp_adc_avg = acc / (sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]));
 		iron_temp_measure_state = iron_temp_measure_ready;
+		if(getIronOn())
+			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -386,7 +404,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 6000;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 100;
+  htim3.Init.Period = 10;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {

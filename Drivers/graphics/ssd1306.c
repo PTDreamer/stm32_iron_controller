@@ -19,7 +19,7 @@ void write_cmd(uint8_t data) {
 }
 void pset(UG_S16 x, UG_S16 y, UG_COLOR c)
 {
-   unsigned int i,p;
+   unsigned int p;
 
    if ( x > 127 ) return;
    p = y>>3; // :8
@@ -39,7 +39,7 @@ void pset(UG_S16 x, UG_S16 y, UG_COLOR c)
 
 void update_display( void )
 {
-   unsigned int i,p;
+   unsigned int p;
    for(p=0;p<8;p++)
    {
       write_cmd(0xB0|p);

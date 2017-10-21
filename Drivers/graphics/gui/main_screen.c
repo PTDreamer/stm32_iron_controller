@@ -7,25 +7,50 @@
 
 #include "main_screen.h"
 #include "tempsensors.h"
+#include "../../../Src/iron.h"
+#include "../../../Src/settings.h"
 
-uint16_t test = 111;
-uint16_t testm = 0;
+static uint16_t m_tip = 0;
+static uint16_t m_mode = 0;
+static uint16_t m_temp = 0;
 static char *modestr[] = {"STB:", "BOO:", "SLP:", "SET:"};
-static char *tipstr[] = {"TIP1", "TIP2", "TIP3", "TIP4"};
-void * testGet() {
-	return &test;
+static char *tipstr[sizeof(systemSettings.ironTips) / sizeof(systemSettings.ironTips[0])];
+static multi_option_widget_t *tipsWidget = NULL;
+
+int boostOn(widget_t *w) {
+	setCurrentMode(mode_boost);
+	return -1;
+}
+void setTemp(uint16_t *value) {
+	m_temp = *value;
+	setSetTemperature(m_temp);
 }
 
-void testSet(uint16_t *value) {
-	test = *value;
+void * getTemp() {
+	m_temp = getSetTemperature();
+	return &m_temp;
 }
 
-void * testGetM() {
-	return &testm;
+void setMode(uint16_t *value) {
+	m_mode = *value;
+	setCurrentMode((iron_mode_t)m_mode);
 }
 
-void testSetM(uint16_t *value) {
-	testm = *value;
+void * getMode() {
+	m_mode = getCurrentMode();
+	return &m_mode;
+}
+
+void setTip(uint16_t *value) {
+	m_tip = *value;
+	systemSettings.currentTip = m_tip;
+	saveSettings();
+	setCurrentTip(m_tip);
+}
+
+void * getTip() {
+	m_tip = systemSettings.currentTip;
+	return &m_tip;
 }
 
 static uint16_t temp;
@@ -35,6 +60,23 @@ const unsigned char therm [] = {
 
 };
 
+static int tempProcessInput(widget_t* w, RE_Rotation_t r, RE_State_t * s) {
+	switch (w->editable.selectable.state) {
+		case widget_selected:
+			if(r == Click && getCurrentMode() != mode_set)
+				setCurrentMode(mode_set);
+			break;
+		case widget_edit:
+			if(r != Rotate_Nothing && r != LongClick && getCurrentMode() != mode_set) {
+				setCurrentMode(mode_set);
+				return -1;
+			}
+			break;
+		default:
+			break;
+	}
+	return default_widgetProcessInput(w, r, s);
+}
 static void * main_screen_getIronTemp() {
 	temp = readTipTemperatureCompensated(0);
 	return &temp;
@@ -45,13 +87,21 @@ static void * main_screen_getAmbTemp() {
 	return &temp;
 }
 
+static void * main_screen_getIronPower() {
+	temp = getCurrentPower();
+	return &temp;
+}
 static void main_screen_init(screen_t *scr) {
 	UG_FontSetHSpace(0);
 	UG_FontSetVSpace(0);
+	tipsWidget->numberOfOptions = systemSettings.currentNumberOfTips;
 	default_init(scr);
 }
 
 void main_screen_setup(screen_t *scr) {
+	for(int x = 0; x < sizeof(systemSettings.ironTips) / sizeof(systemSettings.ironTips[0]); ++x) {
+		tipstr[x] = systemSettings.ironTips[x].name;
+	}
 	scr->draw = &default_screenDraw;
 	scr->processInput = &default_screenProcessInput;
 	scr->init = &main_screen_init;
@@ -74,7 +124,7 @@ void main_screen_setup(screen_t *scr) {
 	widget->posX = 93;
 	widget->posY = 1;
 	widget->font_size = &FONT_8X14;
-	widget->displayWidget.getData = &main_screen_getIronTemp;
+	widget->displayWidget.getData = &main_screen_getIronPower;
 	widget->displayWidget.number_of_dec = 0;
 	widget->displayWidget.type = field_uinteger16;
 	widget->reservedChars = 3;
@@ -106,7 +156,7 @@ void main_screen_setup(screen_t *scr) {
 	widgetDefaultsInit(widget, widget_bmp);
 	widget->posX = 85;
 	widget->posY = 47;
-	widget->displayBmp.bmp.p = therm;
+	widget->displayBmp.bmp.p = (unsigned char*)therm;
 	widget->displayBmp.bmp.width = 8;
 	widget->displayBmp.bmp.height = 16;
 	widget->displayBmp.bmp.colors = 2;
@@ -127,18 +177,20 @@ void main_screen_setup(screen_t *scr) {
 	// tip temperature setpoint
 	widget = screen_addWidget(scr);
 	widgetDefaultsInit(widget, widget_editable);
+	widget->editable.selectable.processInput = (int (*)(widget_t*, RE_Rotation_t, RE_State_t *))&tempProcessInput;
 	widget->posX = 36;
 	widget->posY = 1;
 	widget->font_size = &FONT_8X14;
-	widget->editable.inputData.getData = &testGet;
+	widget->editable.inputData.getData = &getTemp;
 	widget->editable.inputData.number_of_dec = 0;
 	widget->editable.inputData.type = field_uinteger16;
 	widget->editable.big_step = 10;
 	widget->editable.step = 1;
 	widget->editable.selectable.tab = 0;
-	widget->editable.setData = &testSet;
+	widget->editable.setData = (void (*)(void *))&setTemp;
 	widget->reservedChars = 3;
 	widget->editable.selectable.state = widget_edit;
+	widget->editable.selectable.longPressAction = &boostOn;
 	scr->current_widget = widget;
 
 	// mode
@@ -147,13 +199,13 @@ void main_screen_setup(screen_t *scr) {
 	widget->posX = 1;
 	widget->posY = 1;
 	widget->font_size = &FONT_8X14;
-	widget->multiOptionWidget.editable.inputData.getData = &testGetM;
+	widget->multiOptionWidget.editable.inputData.getData = &getMode;
 	widget->multiOptionWidget.editable.inputData.number_of_dec = 0;
 	widget->multiOptionWidget.editable.inputData.type = field_uinteger16;
 	widget->multiOptionWidget.editable.big_step = 0;
 	widget->multiOptionWidget.editable.step = 0;
 	widget->multiOptionWidget.editable.selectable.tab = 2;
-	widget->multiOptionWidget.editable.setData = &testSetM;
+	widget->multiOptionWidget.editable.setData = (void (*)(void *))&setMode;
 
 	widget->reservedChars = 4;
 
@@ -161,25 +213,25 @@ void main_screen_setup(screen_t *scr) {
 	widget->multiOptionWidget.numberOfOptions = 4;
 	widget->multiOptionWidget.currentOption = 0;
 	widget->multiOptionWidget.defaultOption = 0;
-
 	// tips
 	widget = screen_addWidget(scr);
 	widgetDefaultsInit(widget, widget_multi_option);
 	widget->posX = 1;
 	widget->posY = 50;
 	widget->font_size = &FONT_8X14;
-	widget->multiOptionWidget.editable.inputData.getData = &testGetM;
+	widget->multiOptionWidget.editable.inputData.getData = &getTip;
 	widget->multiOptionWidget.editable.inputData.number_of_dec = 0;
 	widget->multiOptionWidget.editable.inputData.type = field_uinteger16;
 	widget->multiOptionWidget.editable.big_step = 0;
 	widget->multiOptionWidget.editable.step = 0;
 	widget->multiOptionWidget.editable.selectable.tab = 1;
-	widget->multiOptionWidget.editable.setData = &testSetM;
+	widget->multiOptionWidget.editable.setData = (void (*)(void *))&setTip;
 
-	widget->reservedChars = 4;
+	widget->reservedChars = 5;
 
 	widget->multiOptionWidget.options = tipstr;
-	widget->multiOptionWidget.numberOfOptions = 4;
+	widget->multiOptionWidget.numberOfOptions = systemSettings.currentNumberOfTips;
+	tipsWidget = &widget->multiOptionWidget;
 	widget->multiOptionWidget.currentOption = 0;
 	widget->multiOptionWidget.defaultOption = 0;
 }

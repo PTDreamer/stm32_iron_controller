@@ -41,6 +41,10 @@ RE_Rotation_t RE_Get(RE_State_t* data) {
 		data->pv_click = RE_BT_HIDLE;
 		RETURN_WITH_STATUS(data, Click);
 	}
+	else if(data->pv_click == RE_BT_LONG_CLICK) {
+		data->pv_click = RE_BT_HIDLE;
+		RETURN_WITH_STATUS(data, LongClick);
+	}
 	else if (data->Diff < 0) {
 		if(data->pv_click == RE_BT_DRAG) {
 			//data->pv_click = RE_BT_HIDLE;
@@ -63,10 +67,7 @@ void RE_SetMode(RE_State_t* data, RE_Mode_t mode) {
 }
 
 void RE_Process(RE_State_t* data) {
-	uint32_t debounce = 0;
-	if((HAL_GetTick() - debounce) < 300)
-		return;
-	debounce = HAL_GetTick();
+	static uint32_t long_press_time = 0;
 	uint8_t now_a;
 	uint8_t now_b;
 	uint8_t now_button;
@@ -102,9 +103,13 @@ void RE_Process(RE_State_t* data) {
 	else if(data->pv_click != RE_BT_DRAG) {
 		if((data->pv_click == RE_BT_HIDLE) && (now_button == 0)) {
 			data->pv_click = RE_BT_PRESSED;
+			long_press_time = HAL_GetTick();
 		}
 		if((data->pv_click == RE_BT_PRESSED) && (now_button == 1)) {
-			data->pv_click = RE_BT_CLICKED;
+			if(HAL_GetTick() - long_press_time > 1000)
+				data->pv_click = RE_BT_LONG_CLICK;
+			else
+				data->pv_click = RE_BT_CLICKED;
 		}
 	}
 }

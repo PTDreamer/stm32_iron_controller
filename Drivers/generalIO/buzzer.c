@@ -6,6 +6,7 @@
  */
 
 #include "buzzer.h"
+#include "../../../Src/iron.h"
 
 typedef enum {STATE_SB, STATE_LB, STATE_AL, STATE_IDLE} buzzer_state_type;
 
@@ -15,6 +16,15 @@ static uint32_t last_time;
 #define BUZZER_ON HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET)
 #define BUZZER_OFF HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET)
 #define BUZZER_TOGGLE HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin)
+
+static void tempReachedCall(uint16_t temp) {
+	buzzer_short_beep();
+}
+static setTemperatureReachedCallback ironTempReachedCallback = &tempReachedCall;
+
+void buzzer_init() {
+	addSetTemperatureReachedCallback(ironTempReachedCallback);
+}
 
 void buzzer_short_beep() {
 	buzzer_state = STATE_SB;
@@ -34,7 +44,6 @@ void buzzer_alarm_stop() {
 	BUZZER_OFF;
 }
 void handle_buzzer() {
-	return;
 	uint32_t delta = HAL_GetTick() - last_time;
 	switch (buzzer_state) {
 	case STATE_SB:

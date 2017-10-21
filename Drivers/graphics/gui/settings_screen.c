@@ -10,6 +10,7 @@
 #include "../../../../Src/iron.h"
 #include "../../../../Src/settings.h"
 #include "../ssd1306.h"
+#include "oled.h"
 
 static widget_t *combo = NULL;
 
@@ -25,7 +26,7 @@ static uint16_t SLEEPTEMP = 0;
 static char str[20]="aaa";
 static widget_t *tipCombo = NULL;
 static widget_t *delTipButton = NULL;
-static widget_t *addNewTipComboItem = NULL;
+static comboBox_item_t *addNewTipComboItem = NULL;
 
 static void edit_iron_tip_screen_init(screen_t *scr) {
 	if(strcmp(tipCombo->comboBoxWidget.currentItem->text, "ADD NEW") == 0) {
@@ -176,11 +177,11 @@ static void * getStandByTime() {
 }
 static void setSleepTemp(uint16_t *val) {
 	SLEEPTEMP = *val;
-	currentSleepSettings.sleelpTemperature = SLEEPTEMP;
+	currentSleepSettings.sleepTemperature = SLEEPTEMP;
 	applySleepSettings();
 }
 static void * getSleepTemp() {
-	SLEEPTEMP = currentSleepSettings.sleelpTemperature;
+	SLEEPTEMP = currentSleepSettings.sleepTemperature;
 	return &SLEEPTEMP;
 }
 ////
@@ -257,6 +258,7 @@ void settings_screen_setup(screen_t *scr) {
 	comboAddItem(widget, "BOOST", screen_edit_boost);
 	comboAddItem(widget, "SLEEP", screen_edit_sleep);
 	comboAddItem(widget, "TIPS", screen_edit_iron_tips);
+	comboAddItem(widget, "CALIBRATION", screen_edit_calibration_wait);
 	comboAddItem(widget, "EXIT", screen_main);
 	combo = widget;
 
@@ -296,7 +298,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 0;
-	w->editable.setData = &setKp;
+	w->editable.setData = (void (*)(void *))&setKp;
 	w->reservedChars = 6;
 
 	w = screen_addWidget(sc);
@@ -319,7 +321,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 1;
-	w->editable.setData = &setKi;
+	w->editable.setData = (void (*)(void *))&setKi;
 	w->reservedChars = 6;
 
 	w = screen_addWidget(sc);
@@ -342,7 +344,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 2;
-	w->editable.setData = &setKd;
+	w->editable.setData = (void (*)(void *))&setKd;
 	w->reservedChars = 6;
 
 	w = screen_addWidget(sc);
@@ -401,7 +403,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 0;
-	w->editable.setData = &setContrast_;
+	w->editable.setData = (void (*)(void *))&setContrast_;
 	w->editable.max_value = 255;
 	w->reservedChars = 3;
 
@@ -471,7 +473,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 0;
-	w->editable.setData = &setBoostTime;
+	w->editable.setData = (void (*)(void *))&setBoostTime;
 	w->editable.max_value = 65535;
 	w->reservedChars = 5;
 
@@ -486,7 +488,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 1;
-	w->editable.setData = &setBoostTemp;
+	w->editable.setData = (void (*)(void *))&setBoostTemp;
 	w->editable.max_value = 450;
 	w->reservedChars = 3;
 
@@ -548,7 +550,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 0;
-	w->editable.setData = &setSleepTime;
+	w->editable.setData = (void (*)(void *))&setSleepTime;
 	w->editable.max_value = 999;
 	w->reservedChars = 3;
 
@@ -572,7 +574,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 1;
-	w->editable.setData = &setSleepTemp;
+	w->editable.setData = (void (*)(void *))&setSleepTemp;
 	w->reservedChars = 3;
 	w->editable.max_value = 450;
 
@@ -596,7 +598,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 2;
-	w->editable.setData = &setStandByTime;
+	w->editable.setData = (void (*)(void *))&setStandByTime;
 	w->reservedChars = 3;
 	w->editable.max_value = 999;
 
@@ -680,7 +682,7 @@ void settings_screen_setup(screen_t *scr) {
 	w->editable.big_step = 10;
 	w->editable.step = 1;
 	w->editable.selectable.tab = 0;
-	w->editable.setData = &setTipStr;
+	w->editable.setData = (void (*)(void *))&setTipStr;
 	w->editable.max_value = 9999;
 	w->reservedChars = 4;
 

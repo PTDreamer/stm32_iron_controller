@@ -124,7 +124,7 @@ static void * getBoostTime() {
 static void setBoostTime(uint16_t *val) {
 	BTIME = *val;
 	currentBoostSettings.time = BTIME;
-	applyBoostSettings();
+	//applyBoostSettings();
 }
 static void * getBoostTemp() {
 	BTEMP = currentBoostSettings.temperature;
@@ -133,7 +133,7 @@ static void * getBoostTemp() {
 static void setBoostTemp(uint16_t *val) {
 	BTEMP = *val;
 	currentBoostSettings.temperature = BTEMP;
-	applyBoostSettings();
+	//applyBoostSettings();
 }
 static int saveBoost(widget_t *w) {
 	systemSettings.boost = currentBoostSettings;
@@ -142,7 +142,7 @@ static int saveBoost(widget_t *w) {
 }
 static int cancelBoost(widget_t *w) {
 	currentBoostSettings = systemSettings.boost;
-	applyBoostSettings();
+	//applyBoostSettings();
 	return screen_main;
 }
 ////
@@ -153,13 +153,13 @@ static int saveSleep(widget_t *w) {
 }
 static int cancelSleep(widget_t *w) {
 	currentSleepSettings = systemSettings.sleep;
-	applyBoostSettings();
+	//applyBoostSettings();
 	return screen_main;
 }
 static void setSleepTime(uint16_t *val) {
 	SLEEPTIME = *val;
 	currentSleepSettings.sleepTime = SLEEPTIME;
-	applySleepSettings();
+	//applySleepSettings();
 }
 
 static void * getSleepTime() {
@@ -169,7 +169,7 @@ static void * getSleepTime() {
 static void setStandByTime(uint16_t *val) {
 	STANDBYTIME = *val;
 	currentSleepSettings.standbyTime = STANDBYTIME;
-	applySleepSettings();
+	//applySleepSettings();
 }
 static void * getStandByTime() {
 	STANDBYTIME = currentSleepSettings.standbyTime;
@@ -178,7 +178,7 @@ static void * getStandByTime() {
 static void setSleepTemp(uint16_t *val) {
 	SLEEPTEMP = *val;
 	currentSleepSettings.sleepTemperature = SLEEPTEMP;
-	applySleepSettings();
+	//applySleepSettings();
 }
 static void * getSleepTemp() {
 	SLEEPTEMP = currentSleepSettings.sleepTemperature;
@@ -537,7 +537,6 @@ void settings_screen_setup(screen_t *scr) {
 	w->posY = 17;
 	w->font_size = &FONT_6X8;
 	w->reservedChars = 3;
-
 	//
 	w = screen_addWidget(sc);
 	widgetDefaultsInit(w, widget_editable);

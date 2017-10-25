@@ -9,14 +9,18 @@
 #include "tempsensors.h"
 #include "../../../Src/iron.h"
 #include "../../../Src/settings.h"
+#include "../generalIO/buzzer.h"
 
+static uint8_t hasIron = 1;
 static uint16_t m_tip = 0;
 static uint16_t m_mode = 0;
 static uint16_t m_temp = 0;
 static char *modestr[] = {"STB:", "BOO:", "SLP:", "SET:"};
 static char *tipstr[sizeof(systemSettings.ironTips) / sizeof(systemSettings.ironTips[0])];
 static multi_option_widget_t *tipsWidget = NULL;
-
+static widget_t *ironTempWidget;
+static widget_t *ironTempLabelWidget;
+static widget_t *noIronWidget;
 int boostOn(widget_t *w) {
 	setCurrentMode(mode_boost);
 	return -1;
@@ -97,7 +101,27 @@ static void main_screen_init(screen_t *scr) {
 	tipsWidget->numberOfOptions = systemSettings.currentNumberOfTips;
 	default_init(scr);
 }
+void main_screenUpdate(screen_t *scr) {
+	uint16_t t = readTipTemperatureCompensated(0);
+	if((t > 500) && hasIron) {
+		UG_FillScreen(C_BLACK);
+		ironTempLabelWidget->enabled = 0;
+		ironTempWidget->enabled = 0;
+		noIronWidget->enabled = 1;
+		buzzer_alarm_start();
+		hasIron = 0;
+	}
+	else if((t <= 500) && !hasIron){
+		UG_FillScreen(C_BLACK);
+		ironTempLabelWidget->enabled = 1;
+		ironTempWidget->enabled = 1;
+		noIronWidget->enabled = 0;
+		buzzer_alarm_stop();
+		hasIron = 1;
+	}
+	default_screenUpdate(scr);
 
+}
 void main_screen_setup(screen_t *scr) {
 	for(int x = 0; x < sizeof(systemSettings.ironTips) / sizeof(systemSettings.ironTips[0]); ++x) {
 		tipstr[x] = systemSettings.ironTips[x].name;
@@ -105,7 +129,7 @@ void main_screen_setup(screen_t *scr) {
 	scr->draw = &default_screenDraw;
 	scr->processInput = &default_screenProcessInput;
 	scr->init = &main_screen_init;
-	scr->update = &default_screenUpdate;
+	scr->update = &main_screenUpdate;
 
 	//iron tip temperature display
 	widget_t *widget = screen_addWidget(scr);
@@ -117,6 +141,7 @@ void main_screen_setup(screen_t *scr) {
 	widget->displayWidget.number_of_dec = 0;
 	widget->displayWidget.type = field_uinteger16;
 	widget->reservedChars = 3;
+	ironTempWidget = widget;
 
 	//power display
 	widget = screen_addWidget(scr);
@@ -129,7 +154,7 @@ void main_screen_setup(screen_t *scr) {
 	widget->displayWidget.type = field_uinteger16;
 	widget->reservedChars = 3;
 
-	//ºC label next to iron tip temperature
+	//power percentage symbol
 	widget = screen_addWidget(scr);
 	widgetDefaultsInit(widget, widget_label);
 	char *s = "%";
@@ -150,6 +175,18 @@ void main_screen_setup(screen_t *scr) {
 	widget->font_size = &FONT_12X20;
 	widget->reservedChars = 2;
 	widget->draw = &default_widgetDraw;
+	ironTempLabelWidget = widget;
+
+	widget = screen_addWidget(scr);
+	widgetDefaultsInit(widget, widget_label);
+	strcpy(widget->displayString, "NO IRON");
+	widget->posX = 20;
+	widget->posY = 20 + 5;
+	widget->font_size = &FONT_12X20;
+	widget->reservedChars = 7;
+	widget->draw = &default_widgetDraw;
+	noIronWidget = widget;
+	widget->enabled = 0;
 
 	//Thermometer bmp next to Ambient temperature
 	widget = screen_addWidget(scr);

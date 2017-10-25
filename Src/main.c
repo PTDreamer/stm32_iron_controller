@@ -223,7 +223,7 @@ int main(void)
 			  lastActivityNeedsUpdate = 0;
 		  }
 
-		  handleGun(activity);
+		  handleIron(activity);
 		  //char sdata[140];
 		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
 		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
@@ -308,7 +308,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if((GPIO_Pin == ROT1_ENC_BUTTON_GPIO_Pin) || (GPIO_Pin == ROT1_ENC_R_Pin) || (GPIO_Pin == ROT1_ENC_L_Pin)) {
+	if((GPIO_Pin == ROT_ENC_BUTTON_GPIO_Pin) || (GPIO_Pin == ROT_ENC_R_Pin) || (GPIO_Pin == ROT_ENC_L_Pin)) {
 		lastRotateNeedsUpdate = 1;
 		lastRotate = HAL_GetTick();
 	}

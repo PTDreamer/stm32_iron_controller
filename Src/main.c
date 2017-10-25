@@ -103,10 +103,12 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE END 0 */
 RE_State_t RE1_Data;
-static uint32_t lastRotate;
-static uint8_t lastRotateNeedsUpdate;
+static uint32_t lastRotate, lastActivity;
+static uint8_t lastRotateNeedsUpdate, lastActivityNeedsUpdate;
+
 static uint16_t ironTempADCRollingAveraget[10];
 static uint8_t rollingAvgTail = 0;
+static uint8_t activity = 1;
 int main(void)
 {
 
@@ -206,11 +208,22 @@ int main(void)
   //  currentPID.Kd = 0.00025182;
    // currentPID.Ki = 0.000038516;
   //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
+  if(HAL_GPIO_ReadPin(WAKE_GPIO_Port, WAKE_Pin) == GPIO_PIN_RESET)
+	  activity = 0;
   while (1)
   {
 	  if(iron_temp_measure_state == iron_temp_measure_ready) {
 		  readTipTemperatureCompensated(1);
-		  handleIron(0);
+
+		  if((lastActivityNeedsUpdate == 1) && (HAL_GetTick() - lastActivity > 100)) {
+			  if(HAL_GPIO_ReadPin(WAKE_GPIO_Port, WAKE_Pin) == GPIO_PIN_RESET)
+				  activity = 0;
+			  else
+				  activity = 1;
+			  lastActivityNeedsUpdate = 0;
+		  }
+
+		  handleGun(activity);
 		  //char sdata[140];
 		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
 		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
@@ -295,8 +308,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	lastRotateNeedsUpdate = 1;
-	lastRotate = HAL_GetTick();
+	if((GPIO_Pin == ROT1_ENC_BUTTON_GPIO_Pin) || (GPIO_Pin == ROT1_ENC_R_Pin) || (GPIO_Pin == ROT1_ENC_L_Pin)) {
+		lastRotateNeedsUpdate = 1;
+		lastRotate = HAL_GetTick();
+	}
+	else if(GPIO_Pin == WAKE_Pin) {
+		lastActivityNeedsUpdate = 1;
+		lastActivity = HAL_GetTick();
+	}
 }
 
 /** System Clock Configuration

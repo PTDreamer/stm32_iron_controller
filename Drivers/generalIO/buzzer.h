@@ -10,7 +10,7 @@
 
 #include "stm32f1xx_hal.h"
 
-#define SHORT_BEEP 	200
+#define SHORT_BEEP 	100
 #define LONG_BEEP	1500
 #define ALARM		800
 

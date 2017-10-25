@@ -8,20 +8,8 @@
 #include "tempsensors.h"
 #include "math.h"
 
-const uint16_t temp_minC = 180;                 // Minimum calibration temperature in degrees of Celsius
+const uint16_t temp_minC = 100;                 // Minimum calibration temperature in degrees of Celsius
 const uint16_t temp_maxC = 450;                 // Maximum calibration temperature in degrees of Celsius
-
-#define T0	310.189760024283
-#define V0	12.6313864176219
-#define P1	24.0619489545393
-#define P2	4.01586218921246
-#define P3	0.268539169819842
-#define P4	-0.00971885437864459
-#define Q1	0.169958719202669
-#define Q2	0.0114130690852614
-#define Q3	-0.000392751549487929
-#define VALIDITY_TRESHOLD 10000
-
 
 static const uint16_t NTC_R = 1013;
 static tipData *currentTipData;

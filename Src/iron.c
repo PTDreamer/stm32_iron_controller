@@ -21,6 +21,8 @@ static uint8_t currentIronPower = 0;
 static uint8_t temperatureReachedFlag = 0;
 static TIM_HandleTypeDef *ironPWMTimer;
 static uint8_t isIronOn = 0;
+static uint32_t lastSetTemperatureTime = 0;
+static uint8_t setTemperatureChanged = 0;
 
 typedef struct setTemperatureReachedCallbackStruct_t setTemperatureReachedCallbackStruct_t;
 
@@ -76,6 +78,8 @@ void setSetTemperature(uint16_t temperature) {
 	user_currentSetTemperature = temperature;
 	temperatureReachedFlag = 0;
 	setCurrentTemperature(temperature);
+	lastSetTemperatureTime = HAL_GetTick();
+	setTemperatureChanged = 1;
 }
 void setCurrentTemperature(uint16_t temperature) {
 	currentSetTemperature = temperature;
@@ -146,6 +150,13 @@ uint16_t getSetTemperature() {
 }
 void handleIron(uint8_t activity) {
 	uint32_t currentTime = HAL_GetTick();
+	if(setTemperatureChanged && (currentTime - lastSetTemperatureTime > 5000)) {
+		setTemperatureChanged = 0;
+		if(systemSettings.setTemperature != user_currentSetTemperature) {
+			systemSettings.setTemperature = user_currentSetTemperature;
+			saveSettings();
+		}
+	}
 	switch (currentMode) {
 		case mode_boost:
 			if(currentTime - currentModeTimer > (currentBoostSettings.time * 1000))
@@ -158,7 +169,7 @@ void handleIron(uint8_t activity) {
 				setCurrentMode(mode_sleep);
 				buzzer_short_beep();
 			}
-			else if(currentTime - currentTime > (currentSleepSettings.standbyTime * 1000 * 60)) {
+			else if(currentTime - currentModeTimer > (currentSleepSettings.standbyTime * 1000 * 60)) {
 				setCurrentMode(mode_standby);
 				buzzer_long_beep();
 			}
@@ -192,6 +203,8 @@ void handleIron(uint8_t activity) {
 
 void ironInit(TIM_HandleTypeDef *timer) {
 	ironPWMTimer = timer;
+	user_currentSetTemperature = systemSettings.setTemperature;
+	currentSetTemperature = systemSettings.setTemperature;
 }
 
 uint8_t getCurrentPower() {

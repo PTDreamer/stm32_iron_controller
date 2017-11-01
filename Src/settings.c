@@ -59,5 +59,5 @@ void resetSettings() {
 	systemSettings.ironTips[0].calADC_At_200 = 976;//793;
 	systemSettings.ironTips[0].calADC_At_300 = 1536;//1323;
 	systemSettings.ironTips[0].calADC_At_400 = 1966;//1900;
-
+	systemSettings.setTemperature = 300;
 }

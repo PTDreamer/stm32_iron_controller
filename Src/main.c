@@ -208,8 +208,10 @@ int main(void)
   //  currentPID.Kd = 0.00025182;
    // currentPID.Ki = 0.000038516;
   //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
-  if(HAL_GPIO_ReadPin(WAKE_GPIO_Port, WAKE_Pin) == GPIO_PIN_RESET)
+  if(HAL_GPIO_ReadPin(WAKE_GPIO_Port, WAKE_Pin) == GPIO_PIN_RESET) {
 	  activity = 0;
+	  setCurrentMode(mode_sleep);
+  }
   while (1)
   {
 	  if(iron_temp_measure_state == iron_temp_measure_ready) {

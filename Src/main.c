@@ -550,14 +550,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ROT_ENC_L_Pin ROT_ENC_R_Pin */
-  GPIO_InitStruct.Pin = ROT_ENC_L_Pin| ROT_ENC_R_Pin | GPIO_PIN_5;
+  GPIO_InitStruct.Pin = ROT_ENC_L_Pin| ROT_ENC_R_Pin | GPIO_PIN_5 | WAKE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : JUMPER_Pin PB3 PB4 WAKE_Pin */
-  GPIO_InitStruct.Pin = JUMPER_Pin|GPIO_PIN_3|GPIO_PIN_4|WAKE_Pin|ROT_ENC_R_Pin;
+  GPIO_InitStruct.Pin = JUMPER_Pin|GPIO_PIN_3|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);

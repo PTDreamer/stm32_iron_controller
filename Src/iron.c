@@ -123,6 +123,7 @@ void addModeChangedCallback(currentModeChanged callback) {
 
 void setCurrentMode(iron_mode_t mode) {
 	currentModeTimer = HAL_GetTick();
+	temperatureReachedFlag = 0;
 	switch (mode) {
 		case mode_boost:
 			setCurrentTemperature(currentBoostSettings.temperature);
@@ -190,7 +191,10 @@ void handleIron(uint8_t activity) {
 			break;
 	}
 	  double set = calculatePID(human2adc(tempSetPoint), iron_temp_adc_avg);
-	  currentIronPower = set * 100;
+	  if(isIronOn)
+		  currentIronPower = set * 100;
+	  else
+		  currentIronPower = 0;
 	  set = 1500.0 *(set * 100.0 -12.0388878376)/102.72647713;
 	  if(set < 0)
 		  set = 0;

@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include "stm32f1xx_hal_flash.h"
 
-#define SETTINGSVERSION 2 /*Change this if you change the struct below to prevent people getting out of sync*/
+#define SETTINGSVERSION 1 /*Change this if you change the struct below to prevent people getting out of sync*/
 
 struct systemSettings {
 	pid_values_t PID;

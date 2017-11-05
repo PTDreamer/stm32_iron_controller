@@ -50,7 +50,7 @@ void resetSettings() {
 	systemSettings.contrast = 0x7F;
 	systemSettings.boost.temperature = 400;
 	systemSettings.boost.time = 60;
-	systemSettings.sleep.sleepTime = 600;
+	systemSettings.sleep.sleepTime = 0;
 	systemSettings.sleep.standbyTime = 5;
 	systemSettings.sleep.sleepTemperature = 100;
 	systemSettings.currentTip = 0;

@@ -11,6 +11,7 @@
 #include "../../../Src/settings.h"
 #include "../generalIO/buzzer.h"
 
+#define NO_IRON_ADC 50000
 static uint8_t hasIron = 1;
 static uint16_t m_tip = 0;
 static uint16_t m_mode = 0;
@@ -102,8 +103,8 @@ static void main_screen_init(screen_t *scr) {
 	default_init(scr);
 }
 void main_screenUpdate(screen_t *scr) {
-	uint16_t t = readTipTemperatureCompensated(0);
-	if((t > 500) && hasIron) {
+	uint16_t t = iron_temp_adc_avg;
+	if((t > NO_IRON_ADC) && hasIron) {
 		UG_FillScreen(C_BLACK);
 		ironTempLabelWidget->enabled = 0;
 		ironTempWidget->enabled = 0;
@@ -111,7 +112,7 @@ void main_screenUpdate(screen_t *scr) {
 		buzzer_alarm_start();
 		hasIron = 0;
 	}
-	else if((t <= 500) && !hasIron){
+	else if((t <= NO_IRON_ADC) && !hasIron){
 		UG_FillScreen(C_BLACK);
 		ironTempLabelWidget->enabled = 1;
 		ironTempWidget->enabled = 1;

@@ -37,6 +37,8 @@ editable_wiget_t * extractEditablePartFromWidget(widget_t *widget) {
 	}
 }
 selectable_widget_t * extractSelectablePartFromWidget(widget_t *widget) {
+	if(!widget)
+		return NULL;
 	switch (widget->type) {
 		case widget_editable:
 			return &widget->editable.selectable;
@@ -380,6 +382,21 @@ int default_widgetProcessInput(widget_t *widget, RE_Rotation_t input, RE_State_t
 				str = (char*)widget->editable.inputData.getData();
 				strcpy(widget->displayString, str);
 				widget->displayString[extractEditablePartFromWidget(widget)->current_edit] += inc;
+				if(widget->displayString[extractEditablePartFromWidget(widget)->current_edit] < 48) {
+					if(inc > 0) {
+						widget->displayString[extractEditablePartFromWidget(widget)->current_edit] = 48;
+					}
+					else
+						widget->displayString[extractEditablePartFromWidget(widget)->current_edit] = 122;
+				}
+				if(widget->displayString[extractEditablePartFromWidget(widget)->current_edit] > 122) {
+					if(inc > 0) {
+						widget->displayString[extractEditablePartFromWidget(widget)->current_edit] = 48;
+					}
+					else
+						widget->displayString[extractEditablePartFromWidget(widget)->current_edit] = 122;
+				}
+
 				widget->editable.setData(widget->displayString);
 				break;
 			default:

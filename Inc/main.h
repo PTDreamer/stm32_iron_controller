@@ -56,9 +56,9 @@
 #define NTC_GPIO_Port GPIOA
 #define V_INPUT_Pin GPIO_PIN_4
 #define V_INPUT_GPIO_Port GPIOA
-#define ROT_ENC_L_Pin GPIO_PIN_0
+#define ROT_ENC_L_Pin GPIO_PIN_1
 #define ROT_ENC_L_GPIO_Port GPIOB
-#define ROT_ENC_R_Pin GPIO_PIN_1
+#define ROT_ENC_R_Pin GPIO_PIN_0
 #define ROT_ENC_R_GPIO_Port GPIOB
 #define ROT_ENC_BUTTON_GPIO_Port GPIOB
 #define ROT_ENC_BUTTON_GPIO_Pin GPIO_PIN_5

@@ -54,6 +54,8 @@ typedef struct {
 	uint16_t GPIO_PIN_B;     /*!< GPIO pin for rotary encoder B pin. */
 	uint16_t GPIO_PIN_BUTTON;     /*!< GPIO pin for rotary encoder B pin. */
 	RE_Click_t pv_click;
+	uint8_t halfPointReached;
+	uint8_t direction;
 } RE_State_t;
 
 void RE_Init(RE_State_t* data, GPIO_TypeDef* GPIO_A_Port, uint16_t GPIO_A_Pin, GPIO_TypeDef* GPIO_B_Port, uint16_t GPIO_B_Pin, GPIO_TypeDef* GPIO_BUTTON_Port, uint16_t GPIO_BUTTON_Pin);

@@ -24,6 +24,8 @@ struct screen_t
 	int (*processInput)(struct screen_t *scr, RE_Rotation_t input, RE_State_t *);
 	void (*update)(screen_t *scr);
 	void (*draw)(screen_t *scr);
+	void (*onExit)(screen_t *scr);
+	void (*onEnter)(screen_t *scr);
 	uint8_t index;
 	void (*init)(screen_t *scr);
 };

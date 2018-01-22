@@ -18,7 +18,7 @@ void saveSettings() {
 	uint32_t error;
 	HAL_FLASHEx_Erase(&erase, &error);
 	uint16_t *data = (uint16_t*) &systemSettings;
-	for (uint8_t i = 0; i < (sizeof(systemSettings) / 2); i++) {
+	for (uint16_t i = 0; i < (sizeof(systemSettings) / 2); i++) {
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_ADDR + (i * 2), data[i]);
 	}
 	HAL_FLASH_Lock();
@@ -26,7 +26,7 @@ void saveSettings() {
 
 void restoreSettings() {
 	uint16_t *data = (uint16_t*) &systemSettings;
-	for (uint8_t i = 0; i < (sizeof(systemSettings) / 2); i++) {
+	for (uint16_t i = 0; i < (sizeof(systemSettings) / 2); i++) {
 		data[i] = *(uint16_t *) (FLASH_ADDR + (i * 2));
 	}
 	if (systemSettings.version != SETTINGSVERSION) {
@@ -41,11 +41,7 @@ void resetSettings() {
 	//systemSettings.PID.Kp = 0.00091328;
 	//systemSettings.PID.Kd = 0.00025182;
 	//systemSettings.PID.Ki = 0.000038516;
-	systemSettings.PID.Kp = 0.02;
-	systemSettings.PID.Kd = 0;//0.00025182;
-	systemSettings.PID.Ki = 0.0025;//0.1;//.0038516;
-	systemSettings.PID.min = 0;
-	systemSettings.PID.max = 1;
+
 	systemSettings.version = SETTINGSVERSION;
 	systemSettings.contrast = 0x7F;
 	systemSettings.boost.temperature = 400;
@@ -56,8 +52,17 @@ void resetSettings() {
 	systemSettings.currentTip = 0;
 	systemSettings.currentNumberOfTips = 1;
 	strcpy(systemSettings.ironTips[0].name, "DFLT");
-	systemSettings.ironTips[0].calADC_At_200 = 976;//793;
-	systemSettings.ironTips[0].calADC_At_300 = 1536;//1323;
-	systemSettings.ironTips[0].calADC_At_400 = 1966;//1900;
+	for(uint8_t x = 0; x < 10; ++x) {
+		systemSettings.ironTips[x].calADC_At_200 = 976;//793;
+		systemSettings.ironTips[x].calADC_At_300 = 1536;//1323;
+		systemSettings.ironTips[x].calADC_At_400 = 1966;//1900;
+		systemSettings.ironTips[x].PID.Kp = 0.02;
+		systemSettings.ironTips[x].PID.Kd = 0;//0.00025182;
+		systemSettings.ironTips[x].PID.Ki = 0.0025;//0.1;//.0038516;
+		systemSettings.ironTips[x].PID.min = 0;
+		systemSettings.ironTips[x].PID.max = 1;
+		systemSettings.ironTips[x].PID.maxI = 200;
+		systemSettings.ironTips[x].PID.minI = -50;
+	}
 	systemSettings.setTemperature = 300;
 }

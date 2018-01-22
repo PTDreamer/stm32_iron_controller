@@ -25,7 +25,7 @@ uint16_t getSupplyVoltage_mv() {
 	}
 	ad_sum = ad_sum - max - min;
 	avg_data = ad_sum / (valid_samples - 2);
-	return 330 * avg_data / 4096.0;
+	return 3300 * avg_data / 4096.0;
 }
 uint16_t getReferenceVoltage_mv() {
 	uint32_t ad_sum = 0;

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.2.1">
+<eagle version="8.3.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
+<setting keepoldvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
 <grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
@@ -18636,14 +18637,6 @@ Solder type</description>
 <wire x1="236.22" y1="-17.78" x2="236.22" y2="-38.1" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$23" class="0">
-<segment>
-<pinref part="R24" gate="G$1" pin="1"/>
-<pinref part="SW1" gate="G$2" pin="2"/>
-<wire x1="195.58" y1="-50.8" x2="200.66" y2="-50.8" width="0.1524" layer="91"/>
-<wire x1="200.66" y1="-50.8" x2="200.66" y2="-45.72" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="PB0" class="0">
 <segment>
 <pinref part="IC3" gate="MCU" pin="PB0"/>
@@ -18865,6 +18858,22 @@ Solder type</description>
 <label x="27.94" y="35.56" size="1.778" layer="95"/>
 </segment>
 </net>
+<net name="PB5" class="0">
+<segment>
+<pinref part="IC3" gate="MCU" pin="PB5"/>
+<wire x1="208.28" y1="33.02" x2="223.52" y2="33.02" width="0.1524" layer="91"/>
+<label x="213.36" y="33.02" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="R24" gate="G$1" pin="1"/>
+<pinref part="SW1" gate="G$2" pin="2"/>
+<wire x1="195.58" y1="-50.8" x2="200.66" y2="-50.8" width="0.1524" layer="91"/>
+<wire x1="200.66" y1="-50.8" x2="200.66" y2="-45.72" width="0.1524" layer="91"/>
+<wire x1="195.58" y1="-50.8" x2="195.58" y2="-58.42" width="0.1524" layer="91"/>
+<wire x1="195.58" y1="-58.42" x2="203.2" y2="-58.42" width="0.1524" layer="91"/>
+<label x="200.66" y="-58.42" size="1.778" layer="95"/>
+</segment>
+</net>
 </nets>
 </sheet>
 </sheets>
@@ -18872,7 +18881,7 @@ Solder type</description>
 </drawing>
 <compatibility>
 <note version="8.2" severity="warning">
-Since Version 8.2, Eagle supports online libraries. The ids
+Since Version 8.2, EAGLE supports online libraries. The ids
 of those online libraries will not be understood (or retained)
 with this version.
 </note>

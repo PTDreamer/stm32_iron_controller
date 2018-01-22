@@ -119,6 +119,7 @@ void default_init(screen_t *scr) {
 		w = w->next_widget;
 	}
 	w = scr->widgets;
+	scr->current_widget = NULL;
 	while(w) {
 		sel = extractSelectablePartFromWidget(w);
 		if(sel) {

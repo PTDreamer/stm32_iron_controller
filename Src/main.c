@@ -50,37 +50,22 @@
 #include "pid.h"
 #include "settings.h"
 #include "iron.h"
-//-u _printf_float
-//adc 32uS per sample
-/* USER CODE BEGIN Includes */
 
-/* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
-
 IWDG_HandleTypeDef hiwdg;
-
 SPI_HandleTypeDef hspi1;
-
-TIM_HandleTypeDef htim4;
-
-TIM_HandleTypeDef htim3;
-
+TIM_HandleTypeDef pwm_tim4;
+TIM_HandleTypeDef temp_measure_tim3;
 UART_HandleTypeDef huart3;
-
 TIM_OC_InitTypeDef sConfigOC;
 
 
 volatile uint32_t adc = 0;
 volatile uint32_t dma = 0;
-
-/* USER CODE BEGIN PV */
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -93,46 +78,18 @@ static void MX_USART3_UART_Init(void);
 static void MX_TIM3_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
-
-/* USER CODE END PFP */
-
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 RE_State_t RE1_Data;
-static uint32_t lastRotate, lastActivity;
-static uint8_t lastRotateNeedsUpdate, lastActivityNeedsUpdate;
 
-static uint16_t ironTempADCRollingAveraget[10];
-static uint8_t rollingAvgTail = 0;
+static uint32_t lastActivity;
+static uint8_t lastActivityNeedsUpdate;
+
 static uint8_t activity = 1;
+static uint32_t pwmStoppedSince = 0;
+#define ADC_MEASURE_DELAY	0
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration----------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_ADC2_Init(&hadc2);
@@ -151,19 +108,13 @@ int main(void)
   /* Enable ADC slave */
   if (HAL_ADC_Start(&hadc2) != HAL_OK)
   {
-    /* Start Error */
-    Error_Handler();
+	  buzzer_alarm_start();
+	  Error_Handler();
   }
   HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adc_measures, sizeof(adc_measures)/ sizeof(uint32_t));
-  //__HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
-  //HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-  HAL_TIM_Base_Start_IT(&htim3);
-  /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&temp_measure_tim3);
+  restoreSettings();
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   UG_GUI gui;
   ssd1306_init(&hspi1);
   UG_Init(&gui, pset, 128, 64);
@@ -174,40 +125,24 @@ int main(void)
   update_display();
 
   RE_Init(&RE1_Data, ROT_ENC_L_GPIO_Port, ROT_ENC_L_Pin, ROT_ENC_R_GPIO_Port, ROT_ENC_R_Pin, ROT_ENC_BUTTON_GPIO_Port, ROT_ENC_BUTTON_GPIO_Pin);
-  uint32_t lastTimeDisplay = HAL_GetTick();
-  lastRotate = lastTimeDisplay;
-  lastRotateNeedsUpdate = 0;
-  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
-  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 5);
 
-  setPWM_tim(&htim4);
+  uint32_t lastTimeDisplay = HAL_GetTick();
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+  //SHOULDNT BE NEEDED __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 5);
+
+  setPWM_tim(&pwm_tim4);
   iron_temp_measure_state = iron_temp_measure_idle;
 
-
-  char sdata[140];
-  sprintf (sdata, "%s\n", "begin");
-  HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-
-//  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-//  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-  restoreSettings();
-  //currentPID.Kp = 0.00091328;
-  //currentPID.Kd = 0.00025182;
-  //currentPID.Ki = 0.000038516;
-  currentPID = systemSettings.PID;
   setContrast(systemSettings.contrast);
   currentBoostSettings = systemSettings.boost;
   currentSleepSettings = systemSettings.sleep;
   applyBoostSettings();
   applySleepSettings();
-  setupPIDFromStruct();
   setCurrentTip(systemSettings.currentTip);
-  ironInit(&htim4);
+  setupPIDFromStruct();
+  ironInit(&pwm_tim4);
   buzzer_init();
 
-  //  currentPID.Kd = 0.00025182;
-   // currentPID.Ki = 0.000038516;
-  //setupPID(1, 3.3 / 100, 0.00091328, 0.00025182, 0.000038516);
   if(HAL_GPIO_ReadPin(WAKE_GPIO_Port, WAKE_Pin) == GPIO_PIN_RESET) {
 	  activity = 0;
 	  setCurrentMode(mode_sleep);
@@ -224,23 +159,11 @@ int main(void)
 				  activity = 1;
 			  lastActivityNeedsUpdate = 0;
 		  }
-
 		  handleIron(activity);
-		  //char sdata[140];
-		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
-		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
 		  iron_temp_measure_state = iron_temp_measure_idle;
-	  }
-	  if((lastRotateNeedsUpdate == 1) && (HAL_GetTick() - lastRotate > 1)) {
-		  RE_Process(&RE1_Data);
-		  lastRotateNeedsUpdate = 0;
 	  }
 
 	  if(HAL_GetTick() - lastTimeDisplay > 200) {
-		 // char sdata[140];
-		  		  //sprintf (sdata, " S%5.2f:PV%5.2f:E%5.2f:I%5.2f:P%5.2f:I%5.2f:D%5.2f\n\r", getPID_SetPoint(), getPID_PresentValue(),getError(), getIntegral(),getPID_P(), getPID_I(),getPID_D());
-		  		  //HAL_UART_Transmit(&huart3, (uint8_t *)sdata, strlen(sdata), 1000);
-
 		  handle_buzzer();
 		  RE_Rotation_t r = RE_Get(&RE1_Data);
 		  oled_update();
@@ -248,18 +171,12 @@ int main(void)
 		  oled_draw();
 		  lastTimeDisplay = HAL_GetTick();
 	  }
-
-  /* USER CODE END WHILE */
-
-  /* USER CODE BEGIN 3 */
-
   }
-  /* USER CODE END 3 */
 
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if(htim != &htim3)
+	if(htim != &temp_measure_tim3)
 		return;
 	if(iron_temp_measure_state == iron_temp_measure_idle) {
 		iron_temp_measure_state = iron_temp_measure_requested;
@@ -269,18 +186,22 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	if(hadc != &hadc1)
 		return;
 	if(iron_temp_measure_state == iron_temp_measure_requested) {
-		HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+		HAL_TIM_PWM_Stop(&pwm_tim4, TIM_CHANNEL_3);
 		iron_temp_measure_state = iron_temp_measure_pwm_stopped;
+		pwmStoppedSince = HAL_GetTick();
 	}
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	static uint16_t ironTempADCRollingAverage[10] = {0};
+	static uint8_t rindex = 0;
+	static uint8_t doOnce = 0;
 	uint32_t acc = 0;
 	uint16_t max = 0;
 	uint16_t min = 0xFFFF;
 	uint16_t temp;
 	if(hadc != &hadc1)
 		return;
-	if(iron_temp_measure_state == iron_temp_measure_pwm_stopped) {
+	if((iron_temp_measure_state == iron_temp_measure_pwm_stopped) && (HAL_GetTick() - pwmStoppedSince > ADC_MEASURE_DELAY)) {
 		iron_temp_measure_state = iron_temp_measure_started;
 		return;
 	} else if(iron_temp_measure_state == iron_temp_measure_started) {
@@ -294,25 +215,27 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		}
 		acc = acc - min - max;
 		uint16_t last = acc / ((sizeof(adc_measures)/sizeof(adc_measures[0])) -2);
-		ironTempADCRollingAveraget[rollingAvgTail] = last;
-		++rollingAvgTail;
-		if(rollingAvgTail > (sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]))-1) {
-			rollingAvgTail = 0;
+		ironTempADCRollingAverage[rindex] = last;
+		if(doOnce) {
+			for(uint8_t x = 0; x < sizeof(ironTempADCRollingAverage)/sizeof(ironTempADCRollingAverage[0]); ++x) {
+				ironTempADCRollingAverage[x] = last;
+			}
+			doOnce =0;
 		}
+		rindex = (rindex + 1) % 10;
 		acc = 0;
-		for(uint8_t x = 0; x < sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]); ++x) {
-			acc += ironTempADCRollingAveraget[x];
+		for(uint8_t x = 0; x < sizeof(ironTempADCRollingAverage)/sizeof(ironTempADCRollingAverage[0]); ++x) {
+			acc += ironTempADCRollingAverage[x];
 		}
-		iron_temp_adc_avg = acc / (sizeof(ironTempADCRollingAveraget)/sizeof(ironTempADCRollingAveraget[0]));
+		iron_temp_adc_avg = acc / (sizeof(ironTempADCRollingAverage)/sizeof(ironTempADCRollingAverage[0]));
 		iron_temp_measure_state = iron_temp_measure_ready;
 		if(getIronOn())
-			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+			HAL_TIM_PWM_Start(&pwm_tim4, TIM_CHANNEL_3);
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if((GPIO_Pin == ROT_ENC_BUTTON_GPIO_Pin) || (GPIO_Pin == ROT_ENC_R_Pin) || (GPIO_Pin == ROT_ENC_L_Pin)) {
-		lastRotateNeedsUpdate = 1;
-		lastRotate = HAL_GetTick();
+		  RE_Process(&RE1_Data);
 	}
 	else if(GPIO_Pin == WAKE_Pin) {
 		lastActivityNeedsUpdate = 1;
@@ -378,7 +301,9 @@ void SystemClock_Config(void)
 
 
 
-/* IWDG init function */
+/* IWDG init function
+ * Frequency 40Khz / 32 = 1.25KHz <=>  0.8ms period
+ * timeout every 0.8ms x 4095 = 3.276S */
 static void MX_IWDG_Init(void)
 {
 
@@ -415,61 +340,69 @@ static void MX_SPI1_Init(void)
 
 }
 
-/* TIM3 init function */
+/* TIM3 init function
+Timer used to interrupt power to the iron in order
+to measure Termocouple ADC
+Clock rate 48MHz/ 6000 = 8000Hz = 125uS period
+interrupt on every 125uS x 10 = 1.25ms */
 static void MX_TIM3_Init(void)
 {
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
 
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 6000;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 10;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  temp_measure_tim3.Instance = TIM3;
+  temp_measure_tim3.Init.Prescaler = 6000;
+  temp_measure_tim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  temp_measure_tim3.Init.Period = 10;
+  temp_measure_tim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;//CHECK
+  if (HAL_TIM_Base_Init(&temp_measure_tim3) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&temp_measure_tim3, &sClockSourceConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&temp_measure_tim3, &sMasterConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
 }
 
-/* TIM4 init function */
+/* TIM4 init function
+ * Timer used for PWM generation
+ * Clock rate 48MHz / 16 = 3MHz
+ * PWM Frequency = 3MHz / 1500 = 2KHz*/
+
 static void MX_TIM4_Init(void)
 {
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
 
-  htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 16;
-  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1500;
-  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  pwm_tim4.Instance = TIM4;
+  pwm_tim4.Init.Prescaler = 16;
+  pwm_tim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  pwm_tim4.Init.Period = 1500;
+  pwm_tim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&pwm_tim4) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&pwm_tim4, &sClockSourceConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  if (HAL_TIM_PWM_Init(&pwm_tim4) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
@@ -478,12 +411,12 @@ static void MX_TIM4_Init(void)
   sConfigOC.Pulse = 750;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&pwm_tim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  HAL_TIM_MspPostInit(&htim4);
+  HAL_TIM_MspPostInit(&pwm_tim4);
 
 }
 
@@ -550,23 +483,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ROT_ENC_L_Pin ROT_ENC_R_Pin */
-  GPIO_InitStruct.Pin = ROT_ENC_L_Pin| ROT_ENC_R_Pin | GPIO_PIN_5 | WAKE_Pin;
+  GPIO_InitStruct.Pin = ROT_ENC_L_Pin| ROT_ENC_R_Pin | ROT_ENC_BUTTON_GPIO_Pin | WAKE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : JUMPER_Pin PB3 PB4 WAKE_Pin */
-  GPIO_InitStruct.Pin = JUMPER_Pin|GPIO_PIN_3|GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BUZZER_Pin */
   GPIO_InitStruct.Pin = BUZZER_Pin;

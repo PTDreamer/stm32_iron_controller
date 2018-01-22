@@ -23,6 +23,8 @@ static TIM_HandleTypeDef *ironPWMTimer;
 static uint8_t isIronOn = 0;
 static uint32_t lastSetTemperatureTime = 0;
 static uint8_t setTemperatureChanged = 0;
+static uint8_t debugMode = 0;
+static uint16_t debugSetPoint;
 
 typedef struct setTemperatureReachedCallbackStruct_t setTemperatureReachedCallbackStruct_t;
 
@@ -39,6 +41,12 @@ struct currentModeChangedCallbackStruct_t {
 static currentModeChangedCallbackStruct_t *currentModeChangedCallbacks = NULL;
 static setTemperatureReachedCallbackStruct_t *temperatureReachedCallbacks = NULL;
 
+void setDebugSetPoint(uint16_t value) {
+	debugSetPoint = value;
+}
+void setDebugMode(uint8_t value) {
+	debugMode = value;
+}
 static void temperatureReached(uint16_t temp) {
 	setTemperatureReachedCallbackStruct_t *s = temperatureReachedCallbacks;
 	while(s) {
@@ -190,7 +198,12 @@ void handleIron(uint8_t activity) {
 		default:
 			break;
 	}
-	  double set = calculatePID(human2adc(tempSetPoint), iron_temp_adc_avg);
+
+	  double set;
+	  if(debugMode)
+		  set = calculatePID(debugSetPoint, iron_temp_adc_avg);
+	  else
+		  set = calculatePID(human2adc(tempSetPoint), iron_temp_adc_avg);
 	  if(isIronOn)
 		  currentIronPower = set * 100;
 	  else

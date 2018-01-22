@@ -29,6 +29,7 @@ void RE_Init(RE_State_t* data, GPIO_TypeDef* GPIO_A_Port, uint16_t GPIO_A_Pin, G
 	data->Diff = 0;
 	data->Absolute = 0;
 	data->LastA = 1;
+	data->halfPointReached = 0;
 }
 
 RE_Rotation_t RE_Get(RE_State_t* data) {
@@ -75,22 +76,18 @@ void RE_Process(RE_State_t* data) {
 	now_a = HAL_GPIO_ReadPin(data->GPIO_A, data->GPIO_PIN_A);
 	now_b = HAL_GPIO_ReadPin(data->GPIO_B, data->GPIO_PIN_B);
 	now_button = HAL_GPIO_ReadPin(data->GPIO_BUTTON, data->GPIO_PIN_BUTTON);
-	/* Check difference */
-	if (now_a != data->LastA) {
-		data->LastA = now_a;
-		if (data->LastA == 0) {
+	if (now_a && now_b) {
+		if(data->halfPointReached) {
+			data->halfPointReached = 0;
 			/* Check mode */
-			if(now_button == 0) {//button pressed
-				data->pv_click = RE_BT_DRAG;
-			}
 			if (data->Mode == RE_Mode_Zero) {
-				if (now_b == 1) {
+				if (data->direction) {
 					data->RE_Count--;
 				} else {
 					data->RE_Count++;
 				}
 			} else {
-				if (now_b == 1) {
+				if (data->direction) {
 					data->RE_Count++;
 				} else {
 					data->RE_Count--;
@@ -98,7 +95,19 @@ void RE_Process(RE_State_t* data) {
 			}
 		}
 	}
-	else if((data->pv_click == RE_BT_DRAG) && (now_button == 1))
+	else if(now_a == 0 && now_b == 0) {
+		data->halfPointReached = 1;
+		if(now_button == 0) {//button pressed
+			data->pv_click = RE_BT_DRAG;
+		}
+	}
+	else if(!data->halfPointReached) {
+		if(now_a)
+			data->direction = 1;
+		else if (now_b)
+			data->direction = 0;
+	}
+	if((data->pv_click == RE_BT_DRAG) && (now_button == 1))
 		data->pv_click = RE_BT_HIDLE;
 	else if(data->pv_click != RE_BT_DRAG) {
 		if((data->pv_click == RE_BT_HIDLE) && (now_button == 0)) {

@@ -10,8 +10,6 @@
 #include "string.h"
 #include <math.h>
 
-
-
 widget_t *screen_addWidget(screen_t *scr) {
 	widget_t *last_widget = NULL;
 	if(scr->widgets) {
@@ -100,7 +98,6 @@ void default_screenUpdate(screen_t *scr) {
 	}
 }
 
-
 void default_init(screen_t *scr) {
 	if(scr->current_widget)
 		return;
@@ -133,6 +130,3 @@ void default_init(screen_t *scr) {
 		w = w->next_widget;
 	}
 }
-
-
-

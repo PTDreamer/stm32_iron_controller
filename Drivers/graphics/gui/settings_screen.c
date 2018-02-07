@@ -136,7 +136,6 @@ static void * getBoostTemp() {
 static void setBoostTemp(uint16_t *val) {
 	BTEMP = *val;
 	currentBoostSettings.temperature = BTEMP;
-	//applyBoostSettings();
 }
 static int saveBoost(widget_t *w) {
 	systemSettings.boost = currentBoostSettings;
@@ -145,7 +144,6 @@ static int saveBoost(widget_t *w) {
 }
 static int cancelBoost(widget_t *w) {
 	currentBoostSettings = systemSettings.boost;
-	//applyBoostSettings();
 	return screen_main;
 }
 ////
@@ -156,13 +154,11 @@ static int saveSleep(widget_t *w) {
 }
 static int cancelSleep(widget_t *w) {
 	currentSleepSettings = systemSettings.sleep;
-	//applyBoostSettings();
 	return screen_main;
 }
 static void setSleepTime(uint16_t *val) {
 	SLEEPTIME = *val;
 	currentSleepSettings.sleepTime = SLEEPTIME;
-	//applySleepSettings();
 }
 
 static void * getSleepTime() {
@@ -172,7 +168,6 @@ static void * getSleepTime() {
 static void setStandByTime(uint16_t *val) {
 	STANDBYTIME = *val;
 	currentSleepSettings.standbyTime = STANDBYTIME;
-	//applySleepSettings();
 }
 static void * getStandByTime() {
 	STANDBYTIME = currentSleepSettings.standbyTime;
@@ -181,7 +176,6 @@ static void * getStandByTime() {
 static void setSleepTemp(uint16_t *val) {
 	SLEEPTEMP = *val;
 	currentSleepSettings.sleepTemperature = SLEEPTEMP;
-	//applySleepSettings();
 }
 static void * getSleepTemp() {
 	SLEEPTEMP = currentSleepSettings.sleepTemperature;
@@ -258,7 +252,6 @@ static void settings_screen_init(screen_t *scr) {
 }
 
 void settings_screen_setup(screen_t *scr) {
-
 	///settings combobox
 	scr->draw = &default_screenDraw;
 	scr->processInput = &default_screenProcessInput;
@@ -756,4 +749,3 @@ void settings_screen_setup(screen_t *scr) {
 	w->buttonWidget.selectable.tab = 3;
 	w->buttonWidget.action = &delTip;
 }
-

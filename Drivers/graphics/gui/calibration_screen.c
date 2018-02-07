@@ -71,7 +71,6 @@ static void setCalState(state_t s) {
 }
 
 static int cancelAction(widget_t* w) {
-	//return screen_edit_calibration_input;
 	return screen_main;
 }
 
@@ -223,18 +222,15 @@ void calibration_screen_setup(screen_t *scr) {
 }
 
 static uint8_t processCalibration() {
-	//state_temps ==== state_temps
-	  uint16_t delta = state_temps[1] - state_temps[0]; delta >>= 1;//50C
+	  uint16_t delta = state_temps[1] - state_temps[0]; delta >>= 1;
 	  uint16_t ambient = readColdJunctionSensorTemp_mC() / 1000;
 
-	// Calculate the internal calibration temperature at the middle point as average value of two approximations:
-	  // before the middle point and after it.
 	  if ((measured_temps[cal_300] > measured_temps[cal_200]) && ((measured_temps[cal_200] + delta) < measured_temps[cal_300]))
 	    adcCal[cal_300] = map(state_temps[cal_300], measured_temps[cal_200], measured_temps[cal_300], adcAtTemp[cal_200], adcAtTemp[cal_300]);
 	  else
 	    adcCal[1] = map(state_temps[1], ambient, measured_temps[1], 0, adcAtTemp[1]);
 	  adcCal[cal_300] += map(state_temps[cal_300], measured_temps[cal_200], measured_temps[cal_400], adcAtTemp[cal_200], adcAtTemp[cal_400]) + 1;
-	  adcCal[1] >>= 1;                                   // half of the summ, average value
+	  adcCal[1] >>= 1;
 
 	  if ((measured_temps[1] > measured_temps[0]) && ((measured_temps[0] + delta) < measured_temps[1]))
 	    adcCal[0] = map(state_temps[0], measured_temps[0], state_temps[1], adcAtTemp[0], adcCal[1]);

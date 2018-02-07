@@ -128,7 +128,6 @@ int main(void)
 
   uint32_t lastTimeDisplay = HAL_GetTick();
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
-  //SHOULDNT BE NEEDED __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 5);
 
   setPWM_tim(&pwm_tim4);
   iron_temp_measure_state = iron_temp_measure_idle;
@@ -147,6 +146,7 @@ int main(void)
 	  activity = 0;
 	  setCurrentMode(mode_sleep);
   }
+
   while (1)
   {
 	  if(iron_temp_measure_state == iron_temp_measure_ready) {

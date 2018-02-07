@@ -136,7 +136,6 @@ static void insertDot(char *str, uint8_t dec) {
 }
 
 void default_widgetUpdate(widget_t *widget) {
-	//uint16_t x = 333;
 	void * data;
 	displayOnly_wiget_t *dis = extractDisplayPartFromWidget(widget);
 	if(!dis)
@@ -173,8 +172,6 @@ void default_widgetUpdate(widget_t *widget) {
 void default_widgetDraw(widget_t *widget) {
 	if(!widget->enabled)
 		return;
-	//UG_SetBackcolor ( C_WHITE ) ;
-	//UG_SetForecolor ( C_BLACK ) ;
 	UG_FontSetHSpace(0);
 	UG_FontSetVSpace(0);
 	if(!widget->inverted) {

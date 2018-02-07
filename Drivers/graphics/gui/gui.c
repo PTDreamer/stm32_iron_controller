@@ -26,12 +26,3 @@ void guiInit() {
 	scr = oled_addScreen(screen_edit_calibration_wait);
 	calibration_screen_setup(scr);
 }
-
-//
-//UG_FontSelect(&FONT_10X16);
-//UG_SetBackcolor ( C_WHITE ) ;
-//UG_SetForecolor ( C_BLACK ) ;
-//UG_FontSetHSpace(0);
-//UG_FontSetVSpace(0);
-//UG_PutString( 0 , 0 , "1234");
-//// UG_PutString( 0 , 14 , "Hello World!");

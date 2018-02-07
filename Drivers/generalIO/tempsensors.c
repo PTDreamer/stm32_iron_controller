@@ -34,7 +34,6 @@ uint16_t readColdJunctionSensorTemp_mC(void) {
 	}
 	ad_sum = ad_sum - max - min;
 	avg_data = ad_sum / 8;
-	//^ Removes the two outliers from the data spread
 
 	rollingAverage[rIndex] = avg_data; //store this result
 	rIndex = (rIndex + 1) % 4; //move the index
@@ -64,8 +63,8 @@ void setCurrentTip(uint8_t tip) {
 tipData * getCurrentTip() {
 	return currentTipData;
 }
-
-uint16_t human2adc(uint16_t t) {     // Translate the human readable temperature into internal value
+// Translate the human readable temperature into internal value
+uint16_t human2adc(uint16_t t) {
   uint16_t temp = t;
   uint16_t ambientTemperature = readColdJunctionSensorTemp_mC() / 1000;
   t = t - ambientTemperature;
@@ -98,7 +97,7 @@ uint16_t human2adc(uint16_t t) {     // Translate the human readable temperature
   return temp;
 }
 
-// Thanslate temperature from internal units to the human readable value (Celsius or Farenheit)
+// Translate temperature from internal units to the human readable value (Celsius or Farenheit)
 uint16_t adc2Human(uint16_t adc_value) {
   uint16_t tempH = 0;
   uint16_t ambientTemperature = readColdJunctionSensorTemp_mC() / 1000;

@@ -37,11 +37,6 @@ void restoreSettings() {
 }
 
 void resetSettings() {
-
-	//systemSettings.PID.Kp = 0.00091328;
-	//systemSettings.PID.Kd = 0.00025182;
-	//systemSettings.PID.Ki = 0.000038516;
-
 	systemSettings.version = SETTINGSVERSION;
 	systemSettings.contrast = 0x7F;
 	systemSettings.boost.temperature = 400;
